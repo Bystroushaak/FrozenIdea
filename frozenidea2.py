@@ -24,7 +24,7 @@ class QuitException(Exception):
         super(self, message)
 
 
-class FrozenIdea2:
+class FrozenIdea2(object):
     """
     """
     def __init__(self, nickname, server, port):
@@ -50,13 +50,13 @@ class FrozenIdea2:
 
         self.socket.send(str(line))
 
-    def _join(self, chan):
-        if not chan.endswith("#"):
+    def join(self, chan):
+        if not chan.startswith("#"):
             chan = "#" + chan
 
         self._socket_send_line("JOIN " + chan)
 
-    def _rename(self, new_name):
+    def rename(self, new_name):
         self._socket_send_line("RENAME " + new_name)
 
     def send_msg(self, chan, msg):
@@ -77,6 +77,14 @@ class FrozenIdea2:
         self.socket.close()
 
     def run(self):
+        try:
+            self.really_run()
+        except KeyboardInterrupt:
+            self.on_quit()
+            self.quit()
+            return
+
+    def really_run(self):
         if self.password != "":
             self._socket_send_line("PASS " + self.password)
 
@@ -88,6 +96,7 @@ class FrozenIdea2:
 
         msg_queue = ""
         while True:
+
             ready_to_read, ready_to_write, in_error = select.select(
                 [self.socket],
                 [self.socket],
@@ -99,6 +108,8 @@ class FrozenIdea2:
 
             # todo: add try / quiet quit
             msg_queue += self.socket.recv(4096)
+
+            print msg_queue
 
             if ENDL not in msg_queue:
                 continue
@@ -116,6 +127,7 @@ class FrozenIdea2:
                     except QuitException:
                         self.on_quit()
                         self.quit()
+                        return
 
     def _parse_msg(self, msg):
         msg = msg[1:]  # remove : from the beggining
@@ -197,25 +209,25 @@ class FrozenIdea2:
 
             self.on_somebody_quit(nick)
 
-    def on_somebody_quit(nick):
+    def on_somebody_quit(self, nick):
         pass
 
     def on_somebody_leaved(self, chan, nick):
         pass
 
-    def on_user_renamed(old_nick, new_nick):
+    def on_user_renamed(self, old_nick, new_nick):
         pass
 
-    def on_somebody_joined_chan(chan_name, nick):
+    def on_somebody_joined_chan(self, chan_name, nick):
         pass
 
-    def on_kick(chan_name):
+    def on_kick(self, chan_name):
         pass
 
-    def on_channel_message(chan_name, from_, msg):
+    def on_channel_message(self, chan_name, from_, msg):
         pass
 
-    def on_private_message(from_, msg):
+    def on_private_message(self, from_, msg):
         pass
 
     def on_channel_join(self, chan_name):
@@ -227,10 +239,25 @@ class FrozenIdea2:
     def on_quit(self):
         pass
 
-    def on_message_to_bad_chan(chan):
+    def on_message_to_bad_chan(self, chan):
         raise ValueError("Bot is not joined in '%s'!") % (chan)
 
 
 #= Main program ===============================================================
 if __name__ == '__main__':
-    pass
+    class Xex(FrozenIdea2):
+        def __init__(self, nickname, server, port=6667):
+            super(Xex, self).__init__(nickname, server, port)
+
+        def on_server_connected(self):
+            self.join("#freedom99")
+
+        def on_channel_message(self, chan_name, from_, msg):
+            print "To:", chan_name
+            print "From:", from_
+            print "Msg:", msg
+            print
+
+
+    x = Xex("xex", "madjack.2600.net", 6667)
+    x.run()
