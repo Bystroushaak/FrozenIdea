@@ -139,10 +139,12 @@ class FrozenIdea2(object):
             type_ = msg.strip()
             msg = ""
 
-        return from_, type_, msg
+        return from_.strip(), type_.strip(), msg.strip()
 
     def _logic(self, msg):
         from_, type_, msg = self._parse_msg(msg)
+
+        print "type_", type_
 
         if type_.startswith("376"):    # end of motd
             self.on_server_connected()
@@ -155,16 +157,24 @@ class FrozenIdea2(object):
                 self.chans.remove(chan_name)
                 new_chan = False
 
-            self.chans[chan_name] = msg.split()  # get list of nicks
+            # get list of nicks, remove chan statuses (op/halfop/..)
+            msg = map(
+                lambda nick: nick if nick[0] not in "&@%+" else nick[1:],
+                msg.split()
+            )
+
+            self.chans[chan_name] = msg
 
             if new_chan:
                 self.on_channel_join(chan_name)
 
         elif type_.startswith("PRIVMSG"):
+            nick, hostname = from_.split("!", 1)
+
             if "#" in type_:
-                self.on_channel_message(type_[-1], from_, msg)
+                self.on_channel_message(type_.split()[-1], nick, hostname, msg)
             else:
-                self.on_private_message(type_[-1], msg)
+                self.on_private_message(type_.split()[-1], hostname, msg)
 
         elif type_.startswith("404"):  # kicked from chan
             chan_name = type_.split()[-1]
@@ -189,7 +199,7 @@ class FrozenIdea2(object):
                     self.chans[chan].remove(old_nick)
                     self.chans[chan].append(msg)
 
-            self.on_user_renamed(self, old_nick, msg)
+            self.on_user_renamed(old_nick, msg)
 
         elif type_.startswith("PART"):
             chan = type_.split()[-1]
@@ -224,10 +234,10 @@ class FrozenIdea2(object):
     def on_kick(self, chan_name):
         pass
 
-    def on_channel_message(self, chan_name, from_, msg):
+    def on_channel_message(self, chan_name, from_, hostname, msg):
         pass
 
-    def on_private_message(self, from_, msg):
+    def on_private_message(self, from_, hostname, msg):
         pass
 
     def on_channel_join(self, chan_name):
@@ -252,12 +262,13 @@ if __name__ == '__main__':
         def on_server_connected(self):
             self.join("#freedom99")
 
-        def on_channel_message(self, chan_name, from_, msg):
+        def on_channel_message(self, chan_name, from_, hostname, msg):
+            print self.chans
             print "To:", chan_name
             print "From:", from_
             print "Msg:", msg
             print
 
 
-    x = Xex("xex", "madjack.2600.net", 6667)
+    x = Xex("xexasdasd", "madjack.2600.net", 6667)
     x.run()
