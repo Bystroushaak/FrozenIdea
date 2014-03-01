@@ -59,12 +59,12 @@ class FrozenIdea2(object):
     def rename(self, new_name):
         self._socket_send_line("RENAME " + new_name)
 
-    def send_msg(self, chan, msg):
-        if chan not in self.chans:
-            self.on_message_to_bad_chan(chan)
-
-    def send_priv_msg(self, to, msg):
+    def send_msg(self, to, msg):
         self._socket_send_line("PRIVMSG " + to + " :" + msg)
+
+    def send_array(self, to, array):
+        for line in array:
+            self.send_msg(to, line)
 
     def part(self, chan):
         self._socket_send_line("PART " + chan)
@@ -79,10 +79,16 @@ class FrozenIdea2(object):
     def run(self):
         try:
             self.really_run()
+
         except KeyboardInterrupt:
             self.on_quit()
             self.quit()
             return
+
+        except Exception:
+            self.on_quit()
+            self.quit()
+            raise
 
     def really_run(self):
         if self.password != "":
@@ -171,10 +177,13 @@ class FrozenIdea2(object):
         elif type_.startswith("PRIVMSG"):
             nick, hostname = from_.split("!", 1)
 
+            if nick == self.nickname:
+                return
+
             if "#" in type_:
                 self.on_channel_message(type_.split()[-1], nick, hostname, msg)
             else:
-                self.on_private_message(type_.split()[-1], hostname, msg)
+                self.on_private_message(nick, hostname, msg)
 
         elif type_.startswith("404"):  # kicked from chan
             chan_name = type_.split()[-1]
@@ -222,7 +231,7 @@ class FrozenIdea2(object):
     def on_somebody_quit(self, nick):
         pass
 
-    def on_somebody_leaved(self, chan, nick):
+    def on_somebody_leaved(self, chan_name, nick):
         pass
 
     def on_user_renamed(self, old_nick, new_nick):
@@ -248,9 +257,6 @@ class FrozenIdea2(object):
 
     def on_quit(self):
         pass
-
-    def on_message_to_bad_chan(self, chan):
-        raise ValueError("Bot is not joined in '%s'!") % (chan)
 
 
 #= Main program ===============================================================
