@@ -13,6 +13,7 @@ import os
 import os.path
 import sys
 import time
+import random
 
 from frozenidea2 import FrozenIdea2
 
@@ -22,7 +23,7 @@ TODO_LIST_DIR = "todos/"  # / at the end is important
 HELP = "help.txt"
 TIME_FILE = "times.txt"
 TIME_DIFF = 60 * 60  # 1 hour
-UNKNOWN_COMMAND = "Unknown command or bad syntax!"
+UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help. Seed: "
 
 # make sure, that directory exists
 if not os.path.exists(TODO_LIST_DIR):
@@ -128,7 +129,7 @@ class TODObot(FrozenIdea2):
 
         # skip commands without parameters other than `list`
         if " " not in msg and msg != "list":
-            self.send_msg(from_, UNKNOWN_COMMAND)
+            self.send_msg(from_, UNKNOWN_COMMAND + str(random.randint(1, 100000)))
             return
 
         # list is only command without parameter
@@ -144,7 +145,7 @@ class TODObot(FrozenIdea2):
 
         # skip unknown commands
         if command not in commands:
-            self.send_msg(from_, UNKNOWN_COMMAND)
+            self.send_msg(from_, UNKNOWN_COMMAND + str(random.randint(1, 100000)))
             return
 
         # skip listing of blank files
@@ -159,12 +160,11 @@ class TODObot(FrozenIdea2):
 
         # react to `list` command
         if command == "list":
-            output = "You have " if from_ == from_nick else from_nick + " have "
-            output += str(len(data)) if len(data) > 0 else "no"
+            output = "You have " + str(len(data)) if len(data) > 0 else "no"
             output += " TODO on your TODO list"
             output += ":" if len(data) > 0 else "!"
 
-            self.send_msg(from_, output)
+            self.send_msg(from_nick, output)
 
             if len(data) == 0:
                 return
@@ -221,6 +221,6 @@ class TODObot(FrozenIdea2):
 
 #= Main program ===============================================================
 if __name__ == '__main__':
-    bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
+    bot = TODObot("todobotXXX", "#c0r3", "xexexe.cyberyard.net", 6667)
 
     bot.run()

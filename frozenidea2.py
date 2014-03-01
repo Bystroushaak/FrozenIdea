@@ -155,6 +155,9 @@ class FrozenIdea2(object):
         if type_.startswith("376"):    # end of motd
             self.on_server_connected()
 
+        elif type_.startswith("422"):    # end of motd
+            self.on_server_connected()
+
         elif type_.startswith("353"):  # nick list
             chan_name = type_.split("#")[-1].strip()
 
