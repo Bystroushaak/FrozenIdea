@@ -134,7 +134,7 @@ class TODObot(FrozenIdea2):
         msg = msg.strip().replace("\n", "")
         commands = ["list", "add", "remove", "help"]
         private_message = True if from_ == nickname else False
-        output_template = "You have $number of TODO$s on your TODO list $excl"
+        output_template = "You have $number TODO$s on your TODO list$excl"
 
         command, msg = self._parse_commands(msg)
 
@@ -171,7 +171,7 @@ class TODObot(FrozenIdea2):
 
             output = string.Template(output_template).substitute(
                 number=str(data_len) if data_len > 0 else "no",
-                s="s" if data_len > 0 else "",
+                s="s" if data_len > 1 else "",
                 excl=":" if data_len > 0 else "!"
             )
             self.send_msg(nickname, output)
@@ -181,7 +181,7 @@ class TODObot(FrozenIdea2):
                 return
 
             for i, line in enumerate(data):
-                self.send_msg(nickname, "#" + str(i) + "; " + line)
+                self.send_msg(nickname, " #" + str(i) + ": " + line)
 
             self.prolong_user(nickname)
 
@@ -191,7 +191,11 @@ class TODObot(FrozenIdea2):
                 self.send_msg(nickname, "Your TODO message is blank!")
                 return
 
-            self.todo_data[nickname].append(msg)
+            if nickname in self.todo_data:
+                self.todo_data[nickname].append(msg)
+            else:
+                self.todo_data[nickname] = [msg]
+
             self.send_msg(nickname, "TODO updated.")
             self.prolong_user(nickname)
 
@@ -259,6 +263,7 @@ class TODObot(FrozenIdea2):
 
 #= Main program ===============================================================
 if __name__ == '__main__':
-    bot = TODObot("todobotXXX", "#c0r3", "xexexe.cyberyard.net", 6667)
+    # bot = TODObot("todobotXXX", "#c0r3", "xexexe.cyberyard.net", 6667)
+    bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
 
     bot.run()
