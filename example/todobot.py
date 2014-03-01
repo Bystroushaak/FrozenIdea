@@ -66,6 +66,8 @@ class TODObot(FrozenIdea2):
         self.react_to_anything(chan_name)
     def on_channel_join(self, chan_name):
         self.react_to_anything(chan_name)
+    def on_select_timeout(self):
+        self.react_to_anything(chan_name)
 
 
     def prolong_user(self, username):
