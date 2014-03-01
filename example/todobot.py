@@ -19,7 +19,7 @@ from frozenidea2 import FrozenIdea2
 
 
 #= Variables ==================================================================
-TIME_DIFF = 1 #* 60  # 1 hour
+TIME_DIFF = 60 * 60  # 1 hour
 DATA_FILE = "todo_data.json"
 HELP_FILE = "help.txt"
 UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
@@ -46,17 +46,17 @@ class TODObot(FrozenIdea2):
         """
         self.join(self.chan)
 
-    def on_channel_message(self, chan_name, from_, hostname, msg):
+    def on_channel_message(self, chan_name, nickname, hostname, msg):
         """React to messages posted to channel."""
         if msg.startswith(self.nickname):  # highlight on chan
             msg = msg.split(" ", 1)[1]
-            self.react_to_message(chan_name, from_, msg)
+            self.react_to_message(chan_name, nickname, msg)
         else:                              # event for ticker
             self.react_to_anything(chan_name)
 
-    def on_private_message(self, from_, hostname, msg):
+    def on_private_message(self, nickname, hostname, msg):
         """React to messages posted to PM."""
-        self.react_to_message(from_, from_, msg)
+        self.react_to_message(nickname, nickname, msg)
 
 
     # react_to_anything() callback block
@@ -138,11 +138,11 @@ class TODObot(FrozenIdea2):
         """
         self.send_msg(self.msg_to, msg)
 
-    def react_to_message(self, from_, nickname, msg):
+    def react_to_message(self, chan, nickname, msg):
         """
         React to user's message send to the bot.
 
-        from_ -- message's origin - name of the channel or users's name in case
+        chan -- message's origin - name of the channel or users's name in case
                  that message was sent as PM
         nickname -- always name of user which sent the message, no matter of
                      the origin of the message
@@ -150,7 +150,7 @@ class TODObot(FrozenIdea2):
         """
         self.msg_to = nickname  # this is saved for .send()
         msg = msg.strip().replace("\n", "")
-        private_message = True if from_ == nickname else False
+        private_message = True if chan == nickname else False
         output_template = "You have $number TODO$s on your TODO list$excl"
 
         commands = ["list", "add", "remove", "help", "set_diff", "see_diff"]
@@ -310,5 +310,6 @@ class TODObot(FrozenIdea2):
 if __name__ == '__main__':
     # bot = TODObot("todobotXXX", "#c0r3", "xexexe.cyberyard.net", 6667)
     bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
+    bot.verbose = True
 
     bot.run()
