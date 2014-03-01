@@ -227,6 +227,8 @@ class TODObot(FrozenIdea2):
                 return
 
             for i, line in enumerate(data):
+                if msg != "" and msg not in line:
+                    continue
                 self.send(" #" + str(i) + ": " + line)
 
             self.prolong_user(nickname)
@@ -308,8 +310,8 @@ class TODObot(FrozenIdea2):
 
 #= Main program ===============================================================
 if __name__ == '__main__':
-    # bot = TODObot("todobotXXX", "#c0r3", "xexexe.cyberyard.net", 6667)
-    bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
+    bot = TODObot("TODObot", "#c0r3", "xexexe.cyberyard.net", 6667)
+    # bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
     bot.verbose = True
 
     bot.run()
