@@ -1,0 +1,4 @@
+Usage:
+    add <new todo>
+    remove <num>
+    list
