@@ -159,7 +159,7 @@ class FrozenIdea2(object):
             self.on_server_connected()
 
         elif type_.startswith("353"):  # nick list
-            chan_name = type_.split("#")[-1].strip()
+            chan_name = "#" + type_.split("#")[-1].strip()
 
             new_chan = True
             if chan_name in self.chans:
