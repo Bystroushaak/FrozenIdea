@@ -123,7 +123,7 @@ class TODObot(FrozenIdea2):
                 return
 
             with open(HELP) as f:
-                self.send_array(from_, f.read().splitlines())
+                self.send_array(from_nick, f.read().splitlines())
 
             return
 
@@ -141,7 +141,7 @@ class TODObot(FrozenIdea2):
 
             # normalize data
             msg = msg.strip()
-            command = command.lower()
+            command = command.lower().replace("\n", "")
 
         # skip unknown commands
         if command not in commands:
