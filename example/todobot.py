@@ -46,6 +46,7 @@ class TODObot(FrozenIdea2):
         """
         Join proper channel.
         """
+        self._socket_send_line("MODE " + self.nickname + " +B")
         self.join(self.chan)
 
     def on_channel_message(self, chan_name, nickname, hostname, msg):
@@ -70,6 +71,10 @@ class TODObot(FrozenIdea2):
         self.react_to_anything(chan_name)
     def on_select_timeout(self):
         self.react_to_anything(chan_name)
+
+    def on_kick(self, chan_name, who):
+        time.sleep(1)
+        self.join(self.chan)
 
 
     def prolong_user(self, username):
@@ -323,7 +328,7 @@ class TODObot(FrozenIdea2):
             "todo": self.todo_data,
             "diff": self.diff_data
         }
-        json.dump(data, open(DATA_FILE, "wt"))
+        json.dump(data, open(DATA_FILE, "wt"), encoding="unicode_escape")
 
 
 #= Main program ===============================================================
