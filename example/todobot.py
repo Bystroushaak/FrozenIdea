@@ -128,6 +128,12 @@ class TODObot(FrozenIdea2):
             return message, ""
 
     def send(self, msg):
+        """
+        .send_msg() wrapper to save some effort and space by automatically
+        choosing .msg_to as person to who will be `msg` delivered.
+
+        Used only in .react_to_message().
+        """
         self.send_msg(self.msg_to, msg)
 
     def react_to_message(self, from_, nickname, msg):
@@ -166,7 +172,7 @@ class TODObot(FrozenIdea2):
         if command == "see_diff":
             if nickname not in self.diff_data:
                 self.send(
-                    "You didn't set your own time diff. Using default " + 
+                    "You didn't set your own time diff. Using default " +
                     str(TIME_DIFF) + "s."
                 )
                 return
