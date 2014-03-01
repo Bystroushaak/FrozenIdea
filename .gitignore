@@ -1,0 +1,4 @@
+*.pyc
+times.txt
+todos/
+example/frozenidea2.py
