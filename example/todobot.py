@@ -151,7 +151,6 @@ class TODObot(FrozenIdea2):
         msg -- string message
         """
         self.msg_to = nickname  # this is saved for .send()
-        msg = msg.decode('ascii', 'ignore')
         msg = msg.strip().replace("\n", "")
         private_message = True if chan == nickname else False
         output_template = "You have $number TODO$s on your TODO list$excl"

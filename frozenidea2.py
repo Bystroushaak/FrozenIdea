@@ -9,6 +9,7 @@ by Bystroushaak (bystrousak@kitakitsune.org
 # TODO
 #   partmsg pri .part()
 #   nikd toho kdo te kicknul pri .on_kick()
+#   ACTION callbacky
 #
 #= Imports ====================================================================
 import socket
@@ -163,6 +164,7 @@ class FrozenIdea2(object):
             msg_queue = _[-1]
 
             for msg in msgs:
+                msg = bytes(msg)
                 if self.verbose:
                     print msg.strip()
 
