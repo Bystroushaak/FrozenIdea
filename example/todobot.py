@@ -10,10 +10,10 @@ by Bystroushaak (bystrousak@kitakitsune.org
 #
 #= Imports ====================================================================
 import os
-import os.path
-import time
 import json
+import time
 import string
+import os.path
 
 from frozenidea2 import FrozenIdea2
 
@@ -151,6 +151,7 @@ class TODObot(FrozenIdea2):
         msg -- string message
         """
         self.msg_to = nickname  # this is saved for .send()
+        msg = msg.decode('ascii', 'ignore')
         msg = msg.strip().replace("\n", "")
         private_message = True if chan == nickname else False
         output_template = "You have $number TODO$s on your TODO list$excl"
