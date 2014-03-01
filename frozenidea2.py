@@ -10,6 +10,8 @@ by Bystroushaak (bystrousak@kitakitsune.org
 #   partmsg pri .part()
 #   nikd toho kdo te kicknul pri .on_kick()
 #   ACTION callbacky
+#   :irc.cyberyard.net 401 TODObot � :No such nick/channel
+#   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
 #
 #= Imports ====================================================================
 import socket
@@ -65,9 +67,15 @@ class FrozenIdea2(object):
 
     def _socket_send_line(self, line):
         """Send line thru socket. Adds ENDL if there is not already one."""
-        line = str(line)
         if not line.endswith(ENDL):
             line += ENDL
+
+        # lot of fun with this shit -- if you wan't to enjoy some unicode
+        # errors, try sending "��"
+        try:
+            line = bytes(line)
+        except UnicodeEncodeError:
+            line = bytearray(line, "ascii", "ignore")
 
         self.socket.send(line)
 
@@ -244,10 +252,16 @@ class FrozenIdea2(object):
                 self.on_private_message(nick, hostname, msg)
 
         # kicked from chan
-        elif type_.startswith("404"):
-            chan_name = type_.split()[-1]
-            self.chans.remove(chan_name)
-            self.on_kick(chan_name)
+        elif type_.startswith("404") or type_.startswith("KICK"):
+            type_ = type_.split()
+            chan_name = type_[1]
+            who = type_[2]
+
+            if who == self.nickname:
+                self.on_kick(chan_name, msg)
+                del self.chans[chan_name]
+            else:
+                self.chans[chan_name].remove(msg)
 
         # somebody joined channel
         elif type_.startswith("JOIN"):
@@ -336,7 +350,7 @@ class FrozenIdea2(object):
         """
         pass
 
-    def on_kick(self, chan_name):
+    def on_kick(self, chan_name, who):
         """Called when somebody kicks you from the channel."""
         pass
 
