@@ -19,6 +19,8 @@ from frozenidea2 import FrozenIdea2
 
 
 #= Variables ==================================================================
+MAX_DATA = 25
+MIN_TIME_DIFF = 60
 TIME_DIFF = 60 * 60  # 1 hour
 DATA_FILE = "todo_data.json"
 HELP_FILE = "help.txt"
@@ -180,7 +182,7 @@ class TODObot(FrozenIdea2):
                 return
 
             self.send(
-                "Your time diff is set to " + self.diff_data[nickname] + "s."
+                "Your time diff is set to %ds." % self.diff_data[nickname]
             )
 
         # read data
@@ -202,6 +204,13 @@ class TODObot(FrozenIdea2):
 
             if index <= 0:
                 self.send("Time diff have to be positive number.")
+                return
+
+            if index < MIN_TIME_DIFF:
+                self.send(
+                    "Min. time diff: " + str(MIN_TIME_DIFF) +
+                    ". Leaving unchanged."
+                )
                 return
 
             self.diff_data[nickname] = index
@@ -240,6 +249,9 @@ class TODObot(FrozenIdea2):
                 return
 
             if nickname in self.todo_data:
+                if len(self.todo_data[nickname]) > MAX_DATA:
+                    self.send("You can have only " + str(MAX_DATA) + " items!")
+                    return
                 self.todo_data[nickname].append(msg)
             else:
                 self.todo_data[nickname] = [msg]
@@ -257,6 +269,12 @@ class TODObot(FrozenIdea2):
                 self.send("`remove` expects index parameter!")
                 return
 
+            if msg == "*":
+                del self.time_data[nickname]
+                del self.todo_data[nickname]
+                self.send("All data removed.")
+                return
+
             # convert commands parameter to number
             index = -1
             try:
@@ -266,7 +284,7 @@ class TODObot(FrozenIdea2):
                 return
 
             # check range of `remove` parameter
-            if data_len > index < 0:
+            if index < 0 or index >= data_len:
                 self.send("Bad index!")
                 return
 
