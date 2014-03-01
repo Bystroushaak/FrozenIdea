@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-
+FrozenIdea2 event driven IRC bot class
 by Bystroushaak (bystrousak@kitakitsune.org
 """
 # Interpreter version: python 2.7
 #
 # TODO
 #   partmsg pri .part()
+#   nikd toho kdo te kicknul pri .on_kick()
 #
 #= Imports ====================================================================
 import socket
@@ -26,6 +27,20 @@ class QuitException(Exception):
 
 class FrozenIdea2(object):
     """
+    FrozenIdea2 IRC bot template class.
+
+    This class allows you to write easily event driven IRC bots.
+
+    Notable properties:
+        .real_name -- real name irc property - shown in whois
+        .part_msg  -- message shown when IRC bot is leaving the channel
+        .quit_msg  -- same as .part_msg, but when quitting
+        .password  -- password for irc server (not channel)
+        .chans     -- dict {"chan_name": [users,]}
+        .verbose   -- should the bot print all incomming messages to stdin?
+                      default False
+
+    Raise QuitException if you wish to quit.
     """
     def __init__(self, nickname, server, port):
         self.nickname = nickname
@@ -34,63 +49,83 @@ class FrozenIdea2(object):
 
         self.real_name = "FrozenIdea2 IRC bot"
         self.part_msg = "Fuck it, I quit."
+        self.quit_msg = self.part_msg
         self.password = ""
+        self.verbose = False
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._connect()
         self.chans = {}
 
     def _connect(self):
+        """Connect socket to server"""
         self.socket.connect((self.server, int(self.port)))
         self.socket.setblocking(0)
 
     def _socket_send_line(self, line):
+        """Send line thru socket. Adds ENDL if there is not already one."""
+        line = str(line)
         if not line.endswith(ENDL):
             line += ENDL
 
-        self.socket.send(str(line))
+        self.socket.send(line)
 
     def join(self, chan):
+        """Join channel. Adds # before `chan`, if there is not already one."""
         if not chan.startswith("#"):
             chan = "#" + chan
 
         self._socket_send_line("JOIN " + chan)
 
-    def rename(self, new_name):
+    def rename(self, new_name):  # TODO: add callback if new_name is used
+        """Change .nickname to `new_name`."""
         self._socket_send_line("RENAME " + new_name)
 
     def send_msg(self, to, msg):
+        """Send `msg` to `to`. `to` can be user or channel."""
         self._socket_send_line("PRIVMSG " + to + " :" + msg)
 
     def send_array(self, to, array):
+        """Send list of messages from `array` to `to`."""
         for line in array:
-            self.send_msg(to, line)
+            self.send_msg(to, str(line))
 
     def part(self, chan):
-        self._socket_send_line("PART " + chan)
+        """Leave channel `chan`. Show .part_msg if set."""
+        print "---", chan
+        self._socket_send_line("PART " + chan + " :" + self.part_msg)
 
     def quit(self):
-        for chan in self.chans:
-            self.part(chan)
-
-        self._socket_send_line("QUIT :" + self.part_msg)
+        """Leave all channels and close connection. Show .quit_msg if set."""
+        self._socket_send_line("QUIT :" + self.quit_msg)
         self.socket.close()
 
     def run(self):
+        """
+        Run the ._really_run() method and wrap check it for errors to ensure
+        clean quit.
+        """
         try:
-            self.really_run()
+            self._really_run()
 
         except KeyboardInterrupt:
             self.on_quit()
             self.quit()
             return
 
-        except Exception:
+        finally:
             self.on_quit()
             self.quit()
             raise
 
-    def really_run(self):
+    def _really_run(self):
+        """
+        Lowlevel socekt operations.
+
+        Read data from socket, join them into messages, react to pings and so
+        on.
+        """
+        # check server password
         if self.password != "":
             self._socket_send_line("PASS " + self.password)
 
@@ -102,31 +137,39 @@ class FrozenIdea2(object):
 
         msg_queue = ""
         while True:
-
+            # select read doesn't consume that much resources from server
             ready_to_read, ready_to_write, in_error = select.select(
                 [self.socket],
-                [self.socket],
-                [self.socket]
+                [],
+                [],
+                60
             )
 
+            # timeouted, call .on_select_timeout()
             if not ready_to_read:
+                self.on_select_timeout()
                 continue
 
-            # todo: add try / quiet quit
+            # read 4096B from the server
             msg_queue += self.socket.recv(4096)
 
-            print msg_queue
-
+            # whole message doesn't arrived yet
             if ENDL not in msg_queue:
                 continue
 
+            # get arrived messages
             _ = msg_queue.split(ENDL)
             msgs = _[:-1]
             msg_queue = _[-1]
 
             for msg in msgs:
-                if msg.startswith("PING"):
-                    self._socket_send_line("PONG " + msg.split()[1].strip())
+                if self.verbose:
+                    print msg.strip()
+
+                if msg.startswith("PING"):  # react o ping
+                    ping_val = msg.split()[1].strip()
+                    self._socket_send_line("PONG " + ping_val)
+                    self.on_ping(ping_val)
                 else:
                     try:
                         self._logic(msg)
@@ -136,29 +179,38 @@ class FrozenIdea2(object):
                         return
 
     def _parse_msg(self, msg):
+        """
+        Get from who is the `msg`, which type it is and it's body.
+
+        Returns tuple (from, type, msg_body).
+        """
         msg = msg[1:]  # remove : from the beggining
 
-        from_, msg = msg.split(" ", 1)
+        nickname, msg = msg.split(" ", 1)
         if ":" in msg:
             type_, msg = msg.split(":", 1)
         else:
             type_ = msg.strip()
             msg = ""
 
-        return from_.strip(), type_.strip(), msg.strip()
+        return nickname.strip(), type_.strip(), msg.strip()
 
     def _logic(self, msg):
-        from_, type_, msg = self._parse_msg(msg)
+        """
+        React to messages of given type. Here is what calls event callbacks.
+        """
+        nickname, type_, msg = self._parse_msg(msg)
 
-        print "type_", type_
-
-        if type_.startswith("376"):    # end of motd
+        # end of motd
+        if type_.startswith("376"):
             self.on_server_connected()
 
-        elif type_.startswith("422"):    # end of motd
+        # end of motd
+        elif type_.startswith("422"):
             self.on_server_connected()
 
-        elif type_.startswith("353"):  # nick list
+        # nick list
+        elif type_.startswith("353"):
             chan_name = "#" + type_.split("#")[-1].strip()
 
             new_chan = True
@@ -175,10 +227,11 @@ class FrozenIdea2(object):
             self.chans[chan_name] = msg
 
             if new_chan:
-                self.on_channel_join(chan_name)
+                self.on_joined_to_chan(chan_name)
 
+        # PM or chan message
         elif type_.startswith("PRIVMSG"):
-            nick, hostname = from_.split("!", 1)
+            nick, hostname = nickname.split("!", 1)
 
             if nick == self.nickname:
                 return
@@ -188,23 +241,25 @@ class FrozenIdea2(object):
             else:
                 self.on_private_message(nick, hostname, msg)
 
-        elif type_.startswith("404"):  # kicked from chan
+        # kicked from chan
+        elif type_.startswith("404"):
             chan_name = type_.split()[-1]
             self.chans.remove(chan_name)
             self.on_kick(chan_name)
 
+        # somebody joined channel
         elif type_.startswith("JOIN"):
-            nick = from_.split("!")[0].strip()
+            nick = nickname.split("!")[0].strip()
             chan_name = msg
 
             if nick != self.nickname:
                 if nick not in self.chans[chan_name]:
                     self.chans[chan_name].append(nick)
-
                     self.on_somebody_joined_chan(chan_name, nick)
 
+        # user renamed
         elif type_ == "NICK":
-            old_nick = from_.split("!")[0].strip()
+            old_nick = nickname.split("!")[0].strip()
 
             for chan in self.chans.keys():
                 if old_nick in self.chans[chan]:
@@ -213,17 +268,19 @@ class FrozenIdea2(object):
 
             self.on_user_renamed(old_nick, msg)
 
+        # user leaved the channel
         elif type_.startswith("PART"):
             chan = type_.split()[-1]
-            nick = from_.split("!")[0].strip()
+            nick = nickname.split("!")[0].strip()
 
             if nick in self.chans[chan]:
                 self.chans[chan].remove(nick)
 
             self.on_somebody_leaved(chan, nick)
 
+        # user quit the server
         elif type_.startswith("QUIT"):
-            nick = from_.split("!")[0].strip()
+            nick = nickname.split("!")[0].strip()
 
             for chan in self.chans.keys():
                 if nick in self.chans[chan]:
@@ -231,53 +288,106 @@ class FrozenIdea2(object):
 
             self.on_somebody_quit(nick)
 
-    def on_somebody_quit(self, nick):
+
+    def on_server_connected(self):
+        """
+        Called when bot is successfully connected to server.
+
+        It is good idea to put here .join() call.
+        """
         pass
 
-    def on_somebody_leaved(self, chan_name, nick):
-        pass
-
-    def on_user_renamed(self, old_nick, new_nick):
+    def on_joined_to_chan(self, chan_name):
+        """Called when the bot has successfully joined the channel."""
         pass
 
     def on_somebody_joined_chan(self, chan_name, nick):
+        """Called when somebody joined the channel you are in."""
+        pass
+
+    def on_channel_message(self, chan_name, nickname, hostname, msg):
+        """
+        Called when somebody posted message to a channel you are in.
+
+        chan_name -- name of the channel (starts with #)
+        nickname -- name of the origin of the message
+        hostname -- users hostname - IP address usually
+        msg -- users message
+        """
+        pass
+
+    def on_private_message(self, nickname, hostname, msg):
+        """
+        Called when somebody send you private message.
+
+        nickname -- name of the origin of the message
+        hostname -- users hostname - IP address usually
+        msg -- users message
+        """
+        pass
+
+    def on_user_renamed(self, old_nick, new_nick):
+        """
+        Called when user renamed himself.
+
+        See .chans property, where user nicknames are tracked and stored.
+        """
         pass
 
     def on_kick(self, chan_name):
+        """Called when somebody kicks you from the channel."""
         pass
 
-    def on_channel_message(self, chan_name, from_, hostname, msg):
+    def on_somebody_leaved(self, chan_name, nick):
+        """Called when somebody leaves the channel."""
         pass
 
-    def on_private_message(self, from_, hostname, msg):
+    def on_somebody_quit(self, nick):
+        """Called when somebody leaves the server."""
         pass
 
-    def on_channel_join(self, chan_name):
+    def on_select_timeout(self):
+        """
+        Called every 60s if nothing else is happening on the socket.
+
+        This can be usefull source of event ticks.
+
+        PS: Ping from server IS considered as something.
+        """
         pass
 
-    def on_server_connected(self):
+    def on_ping(self, ping_val):
+        """
+        Called when the server sends PING to the bot. PONG is automatically
+        sent back.
+        """
         pass
 
     def on_quit(self):
+        """
+        Called when the bot is quitiing the server. Here should be your code
+        which takes care of everything you need to do.
+        """
         pass
 
 
 #= Main program ===============================================================
 if __name__ == '__main__':
     class Xex(FrozenIdea2):
-        def __init__(self, nickname, server, port=6667):
+        def __init__(self, nickname, chan, server, port=6667):
             super(Xex, self).__init__(nickname, server, port)
+            self.chan = chan
 
         def on_server_connected(self):
-            self.join("#freedom99")
+            self.join(self.chan)
 
-        def on_channel_message(self, chan_name, from_, hostname, msg):
+        def on_channel_message(self, chan_name, nickname, hostname, msg):
             print self.chans
             print "To:", chan_name
-            print "From:", from_
+            print "From:", nickname
             print "Msg:", msg
             print
 
-
-    x = Xex("xexasdasd", "madjack.2600.net", 6667)
+    x = Xex("xexasdasd", "#freedom99", "madjack.2600.net", 6667)
+    x.verbose = True
     x.run()
