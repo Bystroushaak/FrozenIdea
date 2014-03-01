@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-
+Simple TODO IRC bot
 by Bystroushaak (bystrousak@kitakitsune.org
 """
 # Interpreter version: python 2.7
@@ -11,20 +11,18 @@ by Bystroushaak (bystrousak@kitakitsune.org
 #= Imports ====================================================================
 import os
 import os.path
-import sys
 import time
 import json
-import random
 import string
 
 from frozenidea2 import FrozenIdea2
 
 
 #= Variables ==================================================================
-TIME_DIFF = 60 * 60  # 1 hour
+TIME_DIFF = 1 #* 60  # 1 hour
 DATA_FILE = "todo_data.json"
 HELP_FILE = "help.txt"
-UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help. Seed: "
+UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
 
 
 #= Functions & objects ========================================================
@@ -74,11 +72,11 @@ class TODObot(FrozenIdea2):
         """
         Don't bother user for some time defined in TIME_DIFF.
         """
-        self.time_data[username] = time.time() + TIME_DIFF
+        self.time_data[username] = time.time()
 
     def react_to_anything(self, chan_name):
         """
-        Called on when certain events occurs:
+        Called when certain events occurs:
             .on_somebody_leaved()
             .on_somebody_joined_chan()
             .on_channel_join()
@@ -93,18 +91,26 @@ class TODObot(FrozenIdea2):
         # check which users have their TODO ready and warn them
         for username in self.time_data.keys():
             timestamp = int(self.time_data[username])
-            if timestamp < time.time() - TIME_DIFF:
+
+            # allow users to set their own diff
+            diff = TIME_DIFF
+            if username in self.diff_data:
+                diff = self.diff_data[username]
+
+            if timestamp < time.time() - diff:
                 self.zapicuj(username)
 
     def zapicuj(self, username):
         """
         Send user information about their TODO after some time (see TIME_DIFF).
         """
-        num = str(len(self.todo_data[username]))
+        num = len(self.todo_data[username])
         self.send_msg(
             username,
-            "You have " + num +
-            "items on your TODO list. For listing, type 'list'."
+            "You have " + str(num) +
+            " item" +
+            ("s" if num > 1 else "") +
+            " on your TODO list. For listing, type 'list'."
         )
         self.prolong_user(username)
 
@@ -121,6 +127,9 @@ class TODObot(FrozenIdea2):
         else:
             return message, ""
 
+    def send(self, msg):
+        self.send_msg(self.msg_to, msg)
+
     def react_to_message(self, from_, nickname, msg):
         """
         React to user's message send to the bot.
@@ -131,82 +140,48 @@ class TODObot(FrozenIdea2):
                      the origin of the message
         msg -- string message
         """
+        self.msg_to = nickname  # this is saved for .send()
         msg = msg.strip().replace("\n", "")
-        commands = ["list", "add", "remove", "help"]
         private_message = True if from_ == nickname else False
         output_template = "You have $number TODO$s on your TODO list$excl"
 
+        commands = ["list", "add", "remove", "help", "set_diff", "see_diff"]
         command, msg = self._parse_commands(msg)
 
-        # random seed is used to prevent kicking the bot from channel where is
-        # sitting bot, which kick users for repeating itself
         if command not in commands:
-            self.send_msg(
-                from_, UNKNOWN_COMMAND + str(random.randint(1, 100000))
-            )
+            self.send(UNKNOWN_COMMAND)
             return
 
         if command == "help":
             if not os.path.exists(HELP_FILE):
-                self.send_msg(
-                    nickname,
-                    "Help file '" + HELP_FILE + "' doesn't exits. Whops."
-                )
+                self.send("Help file '" + HELP_FILE + "' doesn't exits.")
+                self.send("Please, contact owner of this bot.")
                 return
 
             with open(HELP_FILE) as f:
                 self.send_array(nickname, f.read().splitlines())
+
             return
+
+        if command == "see_diff":
+            if nickname not in self.diff_data:
+                self.send(
+                    "You didn't set your own time diff. Using default " + 
+                    str(TIME_DIFF) + "s."
+                )
+                return
+
+            self.send(
+                "Your time diff is set to " + self.diff_data[nickname] + "s."
+            )
 
         # read data
         data = self.todo_data.get(nickname, [])
         data_len = len(data)
 
-        # react to `list` command
-        if command == "list":
-            # skip listing of blank files
-            if data_len == 0:
-                self.send_msg(nickname, "There is no TODO for you (yet).")
-                return
-
-            output = string.Template(output_template).substitute(
-                number=str(data_len) if data_len > 0 else "no",
-                s="s" if data_len > 1 else "",
-                excl=":" if data_len > 0 else "!"
-            )
-            self.send_msg(nickname, output)
-
-            # if there is nothing to list, end the command
-            if data_len == 0:
-                return
-
-            for i, line in enumerate(data):
-                self.send_msg(nickname, " #" + str(i) + ": " + line)
-
-            self.prolong_user(nickname)
-
-        # react to `add` command
-        elif command == "add":
+        if command == "set_diff":
             if msg == "":
-                self.send_msg(nickname, "Your TODO message is blank!")
-                return
-
-            if nickname in self.todo_data:
-                self.todo_data[nickname].append(msg)
-            else:
-                self.todo_data[nickname] = [msg]
-
-            self.send_msg(nickname, "TODO updated.")
-            self.prolong_user(nickname)
-
-        # react to `remove` command
-        elif command == "remove":
-            if data_len == 0:
-                self.send_msg(nickname, "There is no TODO for you (yet).")
-                return
-
-            if msg == "":
-                self.send_msg(nickname, "`remove` expects index parameter!")
+                self.send("`set_diff` expects one parameter!")
                 return
 
             # convert commands parameter to number
@@ -214,20 +189,80 @@ class TODObot(FrozenIdea2):
             try:
                 index = int(msg)
             except ValueError:
-                self.send_msg(
-                    nickname,
-                    "`remove` command expects index (number) as parameter!"
-                )
+                self.send("`set_diff` command expects one integer parameter!")
+                return
+
+            if index <= 0:
+                self.send("Time diff have to be positive number.")
+                return
+
+            self.diff_data[nickname] = index
+            self.send("Time diff updated.")
+
+        # react to `list` command
+        elif command == "list":
+            # skip listing of blank files
+            if data_len == 0:
+                self.send("There is no TODO for you (yet).")
+                return
+
+            # compile output message from template string
+            output = string.Template(output_template).substitute(
+                number=str(data_len) if data_len > 0 else "no",
+                s="s" if data_len > 1 else "",
+                excl=":" if data_len > 0 else "!"
+            )
+            self.send(output)
+
+            # if there is nothing to list, end the command
+            if data_len == 0:
+                return
+
+            for i, line in enumerate(data):
+                self.send(" #" + str(i) + ": " + line)
+
+            self.prolong_user(nickname)
+
+        # react to `add` command
+        elif command == "add":
+            if msg == "":
+                self.send("Your TODO message is blank!")
+                return
+
+            if nickname in self.todo_data:
+                self.todo_data[nickname].append(msg)
+            else:
+                self.todo_data[nickname] = [msg]
+
+            self.send("TODO updated.")
+            self.prolong_user(nickname)
+
+        # react to `remove` command
+        elif command == "remove":
+            if data_len == 0:
+                self.send("There is no TODO for you (yet).")
+                return
+
+            if msg == "":
+                self.send("`remove` expects index parameter!")
+                return
+
+            # convert commands parameter to number
+            index = -1
+            try:
+                index = int(msg)
+            except ValueError:
+                self.send("`remove` command expects integer parameter!")
                 return
 
             # check range of `remove` parameter
             if data_len > index < 0:
-                self.send_msg(nickname, "Bad index!")
+                self.send("Bad index!")
                 return
 
             # actually remove todo from todolist
             del self.todo_data[nickname][index]
-            self.send_msg(nickname, "#" + str(index) + " removed.")
+            self.send("Item #" + str(index) + " removed.")
 
             if len(self.todo_data[nickname]) == 0:
                 del self.time_data[nickname]
@@ -249,6 +284,7 @@ class TODObot(FrozenIdea2):
 
         self.time_data = data.get("time", {})
         self.todo_data = data.get("todo", {})
+        self.diff_data = data.get("diff", {})
 
     def save_data_file(self):
         """
@@ -256,7 +292,8 @@ class TODObot(FrozenIdea2):
         """
         data = {
             "time": self.time_data,
-            "todo": self.todo_data
+            "todo": self.todo_data,
+            "diff": self.diff_data
         }
         json.dump(data, open(DATA_FILE, "wt"))
 
