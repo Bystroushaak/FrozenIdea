@@ -8,7 +8,6 @@ by Bystroushaak (bystrousak@kitakitsune.org
 #
 # TODO
 #   partmsg pri .part()
-#   nikd toho kdo te kicknul pri .on_kick()
 #   ACTION callbacky
 #   :irc.cyberyard.net 401 TODObot � :No such nick/channel
 #   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
