@@ -86,9 +86,15 @@ class FrozenIdea2(object):
 
         self._socket_send_line("JOIN " + chan)
 
-    def rename(self, new_name):  # TODO: add callback if new_name is used
+    def rename(self, new_name):
         """Change .nickname to `new_name`."""
-        self._socket_send_line("RENAME " + new_name)
+        if not self.nickname is new_name:
+            self.nickname = new_name
+            self._socket_send_line("NICK " + new_name)
+
+    def nickname_used(self, nickname):
+        """Callback for `new_name` already in use"""
+        self.nickname = nickname
 
     def send_msg(self, to, msg):
         """Send `msg` to `to`. `to` can be user or channel."""
@@ -218,6 +224,11 @@ class FrozenIdea2(object):
         # end of motd
         elif type_.startswith("422"):
             self.on_server_connected()
+
+        # nickname already in use
+        elif type_.startswith("433"):
+            nickname = type_.split(" ", 2)[1]
+            self.nickname_used(nickname)
 
         # nick list
         elif type_.startswith("353"):
