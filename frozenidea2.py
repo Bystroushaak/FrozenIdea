@@ -8,7 +8,6 @@ by Bystroushaak (bystrousak@kitakitsune.org
 #
 # TODO
 #   partmsg pri .part()
-#   nikd toho kdo te kicknul pri .on_kick()
 #   ACTION callbacky
 #   :irc.cyberyard.net 401 TODObot � :No such nick/channel
 #   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
@@ -86,9 +85,15 @@ class FrozenIdea2(object):
 
         self._socket_send_line("JOIN " + chan)
 
-    def rename(self, new_name):  # TODO: add callback if new_name is used
+    def rename(self, new_name):
         """Change .nickname to `new_name`."""
-        self._socket_send_line("RENAME " + new_name)
+        if not self.nickname is new_name:
+            self.nickname = new_name
+            self._socket_send_line("NICK " + new_name)
+
+    def nickname_used(self, nickname):
+        """Callback for `new_name` already in use"""
+        self.nickname = nickname
 
     def send_msg(self, to, msg):
         """Send `msg` to `to`. `to` can be user or channel."""
@@ -219,6 +224,11 @@ class FrozenIdea2(object):
         elif type_.startswith("422"):
             self.on_server_connected()
 
+        # nickname already in use
+        elif type_.startswith("433"):
+            nickname = type_.split(" ", 2)[1]
+            self.nickname_used(nickname)
+
         # nick list
         elif type_.startswith("353"):
             chan_name = "#" + type_.split("#")[-1].strip()
@@ -256,12 +266,15 @@ class FrozenIdea2(object):
             type_ = type_.split()
             chan_name = type_[1]
             who = type_[2]
+            msg = msg.split(":")[0]  # TODO: parse kick message
 
             if who == self.nickname:
                 self.on_kick(chan_name, msg)
                 del self.chans[chan_name]
             else:
-                self.chans[chan_name].remove(msg)
+                if msg in self.chans[chan_name]:
+                    self.chans[chan_name].remove(msg)
+                self.on_somebody_kicked(chan_name, who, msg)
 
         # somebody joined channel
         elif type_.startswith("JOIN"):
@@ -351,7 +364,20 @@ class FrozenIdea2(object):
         pass
 
     def on_kick(self, chan_name, who):
-        """Called when somebody kicks you from the channel."""
+        """
+        Called when somebody kicks you from the channel.
+
+        who -- who kicked you
+        """
+        pass
+
+    def on_somebody_kicked(self, chan_name, who, kicked_user):
+        """
+        Called when somebody kick someone from `chan_name`.
+
+        who -- who kicked `kicked_user`
+        kicked_user -- person who was kicked from chan
+        """
         pass
 
     def on_somebody_leaved(self, chan_name, nick):
