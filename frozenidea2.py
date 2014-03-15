@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 FrozenIdea2 event driven IRC bot class
-by Bystroushaak (bystrousak@kitakitsune.org
+by Bystroushaak (bystrousak@kitakitsune.org)
 """
 # Interpreter version: python 2.7
 #
 # TODO
-#   partmsg pri .part()
 #   ACTION callbacky
 #   :irc.cyberyard.net 401 TODObot � :No such nick/channel
 #   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
@@ -104,10 +103,12 @@ class FrozenIdea2(object):
         for line in array:
             self.send_msg(to, str(line))
 
-    def part(self, chan):
+    def part(self, chan, msg = ""):
         """Leave channel `chan`. Show .part_msg if set."""
+        if (msg == ""):
+            msg = self.part_msg
         print "---", chan
-        self._socket_send_line("PART " + chan + " :" + self.part_msg)
+        self._socket_send_line("PART " + chan + " :" + msg)
 
     def quit(self):
         """Leave all channels and close connection. Show .quit_msg if set."""
@@ -235,7 +236,7 @@ class FrozenIdea2(object):
 
             new_chan = True
             if chan_name in self.chans:
-                self.chans.remove(chan_name)
+                del self.chans[chan_name]
                 new_chan = False
 
             # get list of nicks, remove chan statuses (op/halfop/..)
@@ -279,7 +280,7 @@ class FrozenIdea2(object):
         # somebody joined channel
         elif type_.startswith("JOIN"):
             nick = nickname.split("!")[0].strip()
-            chan_name = msg
+            chan_name = type_.split()[1].strip()
 
             if nick != self.nickname:
                 if nick not in self.chans[chan_name]:
