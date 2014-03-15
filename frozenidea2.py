@@ -3,7 +3,7 @@
 """
 FrozenIdea2 event driven IRC bot class
 by  Bystroushaak (bystrousak@kitakitsune.org)
-and Thyrst (https://github.com/Thyrstv)
+and Thyrst (https://github.com/Thyrst)
 """
 # Interpreter version: python 2.7
 #
