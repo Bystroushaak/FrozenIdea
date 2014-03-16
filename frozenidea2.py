@@ -99,17 +99,21 @@ class FrozenIdea2(object):
         """Send `msg` to `to`. `to` can be user or channel."""
         self._socket_send_line("PRIVMSG " + to + " :" + msg)
 
+    def send_action_msg(self, to, msg):
+        """Send action message `msg` to `to`. `to` can be user or channel."""
+        self._socket_send_line("PRIVMSG " + to + " :\x01ACTION " + msg + "\x01")
+
     def send_array(self, to, array):
         """Send list of messages from `array` to `to`."""
         for line in array:
             self.send_msg(to, str(line))
 
-    def part(self, chan, msg = ""):
+    def part(self, chan, msg = None):
         """Leave channel `chan`. Show .part_msg if set."""
-        if (msg == ""):
+        if (msg == None):
             msg = self.part_msg
         print "---", chan
-        self._socket_send_line("PART " + chan + " :" + msg)
+        self._socket_send_line("PART " + chan + " :" + str(msg))
 
     def quit(self):
         """Leave all channels and close connection. Show .quit_msg if set."""
@@ -281,7 +285,10 @@ class FrozenIdea2(object):
         # somebody joined channel
         elif type_.startswith("JOIN"):
             nick = nickname.split("!")[0].strip()
-            chan_name = type_.split()[1].strip()
+            try:
+                chan_name = type_.split()[1].strip()
+            except IndexError, e:
+                chan_name = msg
 
             if nick != self.nickname:
                 if nick not in self.chans[chan_name]:
