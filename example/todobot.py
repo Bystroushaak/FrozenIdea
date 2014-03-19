@@ -22,6 +22,7 @@ from frozenidea2 import FrozenIdea2
 MAX_DATA = 25
 MIN_TIME_DIFF = 60
 TIME_DIFF = 60 * 60  # 1 hour
+POKE_DIFF = 5 * 60
 DATA_FILE = "todo_data.json"
 HELP_FILE = "help.txt"
 UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
@@ -32,6 +33,7 @@ class TODObot(FrozenIdea2):
     def __init__(self, nickname, chans, server, port=6667):
         super(TODObot, self).__init__(nickname, server, port)
         self.channels = chans
+        self.poking = False # poking feature - default off
         self.read_data_file()
 
     def on_quit(self):
@@ -164,7 +166,7 @@ class TODObot(FrozenIdea2):
         private_message = True if chan == nickname else False
         output_template = "You have $number TODO$s on your TODO list$match$excl"
 
-        commands = ["list", "add", "remove", "help", "set_diff", "see_diff"]
+        commands = ["list", "add", "remove", "help", "set_diff", "see_diff", "poke"]
         command, msg = self._parse_commands(msg)
 
         if command not in commands:
@@ -308,6 +310,26 @@ class TODObot(FrozenIdea2):
             else:
                 self.prolong_user(nickname)
 
+        # react to `poke` command if is poke feature on
+        elif command == "poke":
+            if self.poking:
+                if msg == "":
+                    self.send("`poke` command expects nick of user to poke.")
+                    return
+
+                nick = msg.split(" ", 1)[0].strip()
+                if nick in self.time_data and nick in self.todo_data and len(self.todo_data[nick]) > 0:
+                    if int(self.time_data[nick]) < time.time() - POKE_DIFF:
+                        self.send_msg(nick, nickname + " want you to do somthing! Check your TODOs with `list`.")
+                        self.send(nick + " poked.")
+                        self.prolong_user(nick)
+                    else:
+                        self.send("This user has been poked a little time ago. Let him be.")
+                else:
+                    self.send("Sorry, this user has no TODOs in my database.")
+            else:
+                self.send("Sorry, `poke` command is disabled.")
+
         self.save_data_file()
 
 
@@ -341,5 +363,6 @@ if __name__ == '__main__':
     bot = TODObot("TODObot", ("#c0r3", "#bots"), "xexexe.cyberyard.net", 6667)
     # bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
     bot.verbose = True
+    bot.poking = True
 
     bot.run()
