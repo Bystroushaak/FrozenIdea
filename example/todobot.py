@@ -172,7 +172,15 @@ class TODObot(FrozenIdea2):
         private_message = True if chan == nickname else False
         output_template = "You have $number TODO$s on your TODO list$match$excl"
 
-        commands = ["list", "add", "remove", "help", "set_diff", "see_diff", "poke"]
+        commands = [
+            "list",
+            "add",
+            "remove",
+            "help",
+            "set_diff",
+            "see_diff",
+            "poke"
+        ]
         command, msg = self._parse_commands(msg)
 
         if command not in commands:
@@ -318,23 +326,33 @@ class TODObot(FrozenIdea2):
 
         # react to `poke` command if is poke feature on
         elif command == "poke":
-            if self.poking:
-                if msg == "":
-                    self.send("`poke` command expects nick of user to poke.")
-                    return
-
-                nick = msg.split(" ", 1)[0].strip()
-                if nick in self.time_data and nick in self.todo_data and len(self.todo_data[nick]) > 0:
-                    if int(self.time_data[nick]) < time.time() - POKE_DIFF:
-                        self.send_msg(nick, nickname + " want you to do somthing! Check your TODOs with `list`.")
-                        self.send(nick + " poked.")
-                        self.prolong_user(nick)
-                    else:
-                        self.send("This user has been poked a little time ago. Let him be.")
-                else:
-                    self.send("Sorry, this user has no TODOs in my database.")
-            else:
+            if not self.poking:
                 self.send("Sorry, `poke` command is disabled.")
+                return
+
+            if msg == "":
+                self.send("`poke` command expects nick of user to poke.")
+                return
+
+            nick = msg.split(" ", 1)[0].strip()
+            if not (nick in self.time_data and
+                    nick in self.todo_data and
+                    len(self.todo_data[nick]) > 0):
+                self.send("Sorry, this user has no TODOs in my database.")
+                return
+
+            if int(self.time_data[nick]) < time.time() - POKE_DIFF:
+                self.send(
+                    "This user has been poked a little time ago. Let him be."
+                )
+                return
+
+            self.send_msg(
+                nick,
+                nickname + " want you to do somthing! Check your TODOs with `list`."
+            )
+            self.send(nick + " poked.")
+            self.prolong_user(nick)
 
         self.save_data_file()
 
