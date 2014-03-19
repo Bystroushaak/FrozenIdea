@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Simple TODO IRC bot
-by Bystroushaak (bystrousak@kitakitsune.org
+by Bystroushaak (bystrousak@kitakitsune.org)
 """
 # Interpreter version: python 2.7
 # This work is licensed under a Creative Commons 3.0 Unported License
@@ -22,6 +22,7 @@ from frozenidea2 import FrozenIdea2
 MAX_DATA = 25
 MIN_TIME_DIFF = 60
 TIME_DIFF = 60 * 60  # 1 hour
+POKE_DIFF = 5 * 60
 DATA_FILE = "todo_data.json"
 HELP_FILE = "help.txt"
 UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
@@ -29,9 +30,10 @@ UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
 
 #= Functions & objects ========================================================
 class TODObot(FrozenIdea2):
-    def __init__(self, nickname, chan, server, port=6667):
+    def __init__(self, nickname, chans, server, port=6667):
         super(TODObot, self).__init__(nickname, server, port)
-        self.chan = chan
+        self.channels = chans
+        self.poking = False # poking feature - default off
         self.read_data_file()
 
     def on_quit(self):
@@ -44,14 +46,18 @@ class TODObot(FrozenIdea2):
 
     def on_server_connected(self):
         """
-        Join proper channel.
+        Join proper channels.
         """
         self._socket_send_line("MODE " + self.nickname + " +B")
-        self.join(self.chan)
+        if type(self.channels) is str:
+            self.join(self.channels)
+        elif type(self.channels) is tuple:
+            for chan in self.channels:
+                self.join(chan)
 
     def on_channel_message(self, chan_name, nickname, hostname, msg):
         """React to messages posted to channel."""
-        if msg.startswith(self.nickname):  # highlight on chan
+        if msg.startswith(self.nickname + ": "):  # message for bot
             msg = msg.split(" ", 1)[1]
             self.react_to_message(chan_name, nickname, msg)
         else:                              # event for ticker
@@ -149,7 +155,7 @@ class TODObot(FrozenIdea2):
         """
         React to user's message send to the bot.
 
-        chan -- message's origin - name of the channel or users's name in case
+        chan -- message's origin - name of the channel or user's nick in case
                  that message was sent as PM
         nickname -- always name of user which sent the message, no matter of
                      the origin of the message
@@ -158,9 +164,9 @@ class TODObot(FrozenIdea2):
         self.msg_to = nickname  # this is saved for .send()
         msg = msg.strip().replace("\n", "")
         private_message = True if chan == nickname else False
-        output_template = "You have $number TODO$s on your TODO list$excl"
+        output_template = "You have $number TODO$s on your TODO list$match$excl"
 
-        commands = ["list", "add", "remove", "help", "set_diff", "see_diff"]
+        commands = ["list", "add", "remove", "help", "set_diff", "see_diff", "poke"]
         command, msg = self._parse_commands(msg)
 
         if command not in commands:
@@ -184,11 +190,11 @@ class TODObot(FrozenIdea2):
                     "You didn't set your own time diff. Using default " +
                     str(TIME_DIFF) + "s."
                 )
-                return
-
-            self.send(
-                "Your time diff is set to %ds." % self.diff_data[nickname]
-            )
+            else:
+                self.send(
+                    "Your time diff is set to %ds." % self.diff_data[nickname]
+                )
+            return
 
         # read data
         data = self.todo_data.get(nickname, [])
@@ -223,28 +229,29 @@ class TODObot(FrozenIdea2):
 
         # react to `list` command
         elif command == "list":
+            todos = []
+
             # skip listing of blank files
             if data_len == 0:
                 self.send("There is no TODO for you (yet).")
                 return
 
-            # compile output message from template string
-            output = string.Template(output_template).substitute(
-                number=str(data_len) if data_len > 0 else "no",
-                s="s" if data_len > 1 else "",
-                excl=":" if data_len > 0 else "!"
-            )
-            self.send(output)
-
-            # if there is nothing to list, end the command
-            if data_len == 0:
-                return
-
             for i, line in enumerate(data):
                 if msg != "" and msg not in line:
                     continue
-                self.send(" #" + str(i) + ": " + line)
+                todos.append(" #" + str(i) + ": " + line)
+            amount = len(todos)
 
+            # compile output message from template string
+            output = string.Template(output_template).substitute(
+                number=str(amount) if amount > 0 else "no",
+                s="s" if amount > 1 else "",
+                match="" if msg == "" else " with match `" + str(msg) + "`",
+                excl=":" if amount > 0 else "!"
+            )
+            self.send(output)
+
+            self.send_array(nickname, todos)
             self.prolong_user(nickname)
 
         # react to `add` command
@@ -303,6 +310,26 @@ class TODObot(FrozenIdea2):
             else:
                 self.prolong_user(nickname)
 
+        # react to `poke` command if is poke feature on
+        elif command == "poke":
+            if self.poking:
+                if msg == "":
+                    self.send("`poke` command expects nick of user to poke.")
+                    return
+
+                nick = msg.split(" ", 1)[0].strip()
+                if nick in self.time_data and nick in self.todo_data and len(self.todo_data[nick]) > 0:
+                    if int(self.time_data[nick]) < time.time() - POKE_DIFF:
+                        self.send_msg(nick, nickname + " want you to do somthing! Check your TODOs with `list`.")
+                        self.send(nick + " poked.")
+                        self.prolong_user(nick)
+                    else:
+                        self.send("This user has been poked a little time ago. Let him be.")
+                else:
+                    self.send("Sorry, this user has no TODOs in my database.")
+            else:
+                self.send("Sorry, `poke` command is disabled.")
+
         self.save_data_file()
 
 
@@ -333,8 +360,9 @@ class TODObot(FrozenIdea2):
 
 #= Main program ===============================================================
 if __name__ == '__main__':
-    bot = TODObot("TODObot", "#c0r3", "xexexe.cyberyard.net", 6667)
+    bot = TODObot("TODObot", ("#c0r3", "#bots"), "xexexe.cyberyard.net", 6667)
     # bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
     bot.verbose = True
+    bot.poking = True
 
     bot.run()
