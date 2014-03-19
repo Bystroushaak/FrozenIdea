@@ -8,7 +8,6 @@ and Thyrst (https://github.com/Thyrst)
 # Interpreter version: python 2.7
 #
 # TODO
-#   ACTION callbacky
 #   :irc.cyberyard.net 401 TODObot � :No such nick/channel
 #   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
 #
@@ -95,13 +94,25 @@ class FrozenIdea2(object):
         """Callback for `new_name` already in use"""
         self.nickname = nickname
 
-    def send_msg(self, to, msg):
-        """Send `msg` to `to`. `to` can be user or channel."""
-        self._socket_send_line("PRIVMSG " + to + " :" + msg)
+    def send_msg(self, to, msg, msg_type=0):
+        """
+        Send message to given user or channel.
 
-    def send_action_msg(self, to, msg):
-        """Send action message `msg` to `to`. `to` can be user or channel."""
-        self._socket_send_line("PRIVMSG " + to + " :\x01ACTION " + msg + "\x01")
+        to - user or channel
+        msg - the message
+        type - type of message, it can be
+                        `0` for normal message,
+                        `1` for action message,
+                        `2` for notice
+        """
+        try:
+            line = ["PRIVMSG " + to + " :" + msg,
+                    "PRIVMSG " + to + " :\x01ACTION " + msg + "\x01",
+                    "NOTICE " + to + " :" + msg][int(msg_type)]
+        except IndexError, e:
+            line = "PRIVMSG " + to + " :" + msg
+
+        self._socket_send_line(line)
 
     def send_array(self, to, array):
         """Send list of messages from `array` to `to`."""
@@ -263,9 +274,17 @@ class FrozenIdea2(object):
                 return
 
             if "#" in type_:
-                self.on_channel_message(type_.split()[-1], nick, hostname, msg)
+                if msg.startswith("\x01ACTION"):
+                    msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
+                    self.on_channel_action_message(type_.split()[-1], nick, hostname, msg)
+                else:
+                    self.on_channel_message(type_.split()[-1], nick, hostname, msg)
             else:
-                self.on_private_message(nick, hostname, msg)
+                if msg.startswith("\x01ACTION"):
+                    msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
+                    self.on_private_action_message(nick, hostname, msg)
+                else:
+                    self.on_private_message(nick, hostname, msg)
 
         # kicked from chan
         elif type_.startswith("404") or type_.startswith("KICK"):
@@ -362,6 +381,14 @@ class FrozenIdea2(object):
         hostname -- users hostname - IP address usually
         msg -- users message
         """
+        pass
+
+    def on_channel_action_message(self, chan_name, nickname, hostname, msg):
+        """Called for channel message with action."""
+        pass
+
+    def on_private_action_message(self, nickname, hostname, msg):
+        """Called for private message with action."""
         pass
 
     def on_user_renamed(self, old_nick, new_nick):
