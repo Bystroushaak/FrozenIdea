@@ -105,6 +105,12 @@ class TODObot(FrozenIdea2):
 
         # check which users have their TODO ready and warn them
         for username in self.time_data.keys():
+            # skip users, which are not in any channel (this prevents bot from
+            # posting to usernames, which are currently offline)
+            present_usernames = set(sum(self.chans.values(), []))
+            if username not in present_usernames:
+                continue
+
             timestamp = int(self.time_data[username])
 
             # allow users to set their own diff
