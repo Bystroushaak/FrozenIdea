@@ -61,7 +61,7 @@ class TODObot(FrozenIdea2):
             msg = msg.split(" ", 1)[1]
             self.react_to_message(chan_name, nickname, msg)
         else:                              # event for ticker
-            self.react_to_anything(chan_name)
+            self.react_to_anything()
 
     def on_private_message(self, nickname, hostname, msg):
         """React to messages posted to PM."""
@@ -70,13 +70,13 @@ class TODObot(FrozenIdea2):
 
     # react_to_anything() callback block
     def on_somebody_leaved(self, chan_name, nick):
-        self.react_to_anything(chan_name)
+        self.react_to_anything()
     def on_somebody_joined_chan(self, chan_name, nick):
-        self.react_to_anything(chan_name)
+        self.react_to_anything()
     def on_channel_join(self, chan_name):
-        self.react_to_anything(chan_name)
+        self.react_to_anything()
     def on_select_timeout(self):
-        self.react_to_anything(chan_name)
+        self.react_to_anything()
 
     def on_kick(self, chan_name, who):
         time.sleep(1)
@@ -89,7 +89,7 @@ class TODObot(FrozenIdea2):
         """
         self.time_data[username] = time.time()
 
-    def react_to_anything(self, chan_name):
+    def react_to_anything(self):
         """
         Called when certain events occurs:
             .on_somebody_leaved()
