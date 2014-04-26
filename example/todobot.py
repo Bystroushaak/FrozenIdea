@@ -13,6 +13,7 @@ import os
 import json
 import time
 import os.path
+import argparse
 
 import commands
 from frozenidea2 import FrozenIdea2
@@ -51,7 +52,7 @@ class TODObot(FrozenIdea2):
         self._socket_send_line("MODE " + self.nickname + " +B")
         if type(self.channels) is str:
             self.join(self.channels)
-        elif type(self.channels) is tuple:
+        elif type(self.channels) in [tuple, list]:
             for chan in self.channels:
                 self.join(chan)
 
@@ -228,8 +229,37 @@ class TODObot(FrozenIdea2):
 
 #= Main program ===============================================================
 if __name__ == '__main__':
-    bot = TODObot("TODObot", ("#freedom99"), "madjack.2600.net", 6667)
-    # bot = TODObot("todobotXXX", "#freedom99", "madjack.2600.net", 6667)
+    parser = argparse.ArgumentParser(description='IRC TODObot')
+    parser.add_argument(
+        "-s",
+        '--server',
+        type=str,
+        help='Address of the IRC server.'
+    )
+    parser.add_argument(
+        "-p",
+        '--port',
+        type=int,
+        default=6667,
+        help='Port of the IRC server. Default 6667.'
+    )
+    parser.add_argument(
+        "-n",
+        '--nick',
+        type=str,
+        default="TODObot",
+        help="Bot's nick. Default 'TODObot'."
+    )
+    parser.add_argument(
+        'channels',
+        metavar='CHANNEL',
+        type=str,
+        nargs='+',
+        help='List of channels for bot to join. With or without #.'
+    )
+    args = parser.parse_args()
+
+    bot = TODObot(args.nick, args.channels, args.server, args.port)
     bot.verbose = True
 
     bot.run()
