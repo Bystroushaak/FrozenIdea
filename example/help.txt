@@ -1,3 +1,6 @@
+Hello, I am example of RemoteFox's IRC class for python.
+(https://github.com/Bystroushaak/FrozenIdea2)
+
 Usage:
     add <new todo>
     rm/remove <num/*> -- index of row you want to delete or * for all rows
