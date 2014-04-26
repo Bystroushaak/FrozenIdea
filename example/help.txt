@@ -1,7 +1,6 @@
 Usage:
     add <new todo>
-    remove <num/*> -- index of row you want to delete or * for all rows
-    list [match] -- list all or `match`ing TODOs
-    see_diff -- show your current time diff settings
-    set_diff -- adds your own time diff (how long it takes to send you another warning) (in seconds)
-    poke <username> -- manually remember user that he has some TODO
+    rm/remove <num/*> -- index of row you want to delete or * for all rows
+    ls/list [match] -- list all or `match`ing TODOs
+    see/see_diff -- show your current time diff settings
+    set/set_diff -- adds your own time diff (how long it takes to send you another warning) (in seconds)

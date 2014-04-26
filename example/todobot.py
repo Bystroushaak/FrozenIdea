@@ -19,9 +19,12 @@ from frozenidea2 import FrozenIdea2
 
 
 #= Variables ==================================================================
-MAX_DATA = 25
-MIN_TIME_DIFF = 60
-TIME_DIFF = 60 * 60  # 1 hour
+MAX_DATA = 25  # how much items will be stored for one user (warning: flood)
+HELP_FILE = "help.txt"  # path to file with help
+
+TIME_DIFF = 60 * 60 * 24  # 1 hour (default time diff)
+MIN_TIME_DIFF = 60  # minimal time diff (used to prevent flood kick)
+
 DATA_FILE = "todo_data.json"
 UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
 
@@ -170,11 +173,15 @@ class TODObot(FrozenIdea2):
 
         valid_commands = {
             "list": commands.ListCommand(),
+            "ls": commands.ListCommand(),
             "add": commands.AddCommand(),
             "remove": commands.RemoveCommand(),
+            "rm": commands.RemoveCommand(),
             "help": commands.HelpCommand(),
             "see_diff": commands.SeeDiffCommand(),
+            "see": commands.SeeDiffCommand(),
             "set_diff": commands.SetDiffCommand(),
+            "set": commands.SetDiffCommand(),
         }
         command, msg = self._parse_commands(msg)
 
@@ -186,7 +193,10 @@ class TODObot(FrozenIdea2):
         data = self.todo_data.get(nickname, [])
         data_len = len(data)
 
-        valid_commands[command].react(self, locals())
+        valid_commands[command].react(
+            self,
+            dict(globals().items() + locals().items())
+        )
 
         self.save_data_file()
 
