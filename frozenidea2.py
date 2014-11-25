@@ -117,7 +117,7 @@ class FrozenIdea2(object):
     def send_array(self, to, array):
         """Send list of messages from `array` to `to`."""
         for line in array:
-            self.send_msg(to, str(line))
+            self.send_msg(to, line)
 
     def part(self, chan, msg = None):
         """Leave channel `chan`. Show .part_msg if set."""
