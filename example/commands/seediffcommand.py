@@ -3,17 +3,19 @@
 #
 # Interpreter version: python 2.7
 #
-#= Imports ====================================================================
-class SeeDiffCommand:
-    def react(self, obj, obj_locals):
-        globals().update(obj_locals)
+# Imports =====================================================================
+from __init__ import TIME_DIFF
 
-        if nickname not in obj.diff_data:
+
+# Command definition ==========================================================
+class SeeDiffCommand:
+    def react(self, obj, info):
+        if info.nickname not in obj.diff_data:
             obj.send(
                 "You didn't set your own time diff. Using default " +
                 str(TIME_DIFF) + "s."
             )
         else:
             obj.send(
-                "Your time diff is set to %ds." % obj.diff_data[nickname]
+                "Your time diff is set to %ds." % obj.diff_data[info.nickname]
             )

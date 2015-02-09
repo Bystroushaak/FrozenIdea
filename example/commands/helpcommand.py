@@ -3,18 +3,19 @@
 #
 # Interpreter version: python 2.7
 #
-#= Imports ====================================================================
+# Imports =====================================================================
 import os
 
+from __init__ import HELP_FILE
 
+
+# Command definition ==========================================================
 class HelpCommand:
-    def react(self, obj, obj_locals):
-        globals().update(obj_locals)
-
+    def react(self, obj, info):
         if not os.path.exists(HELP_FILE):
             obj.send("Help file '" + HELP_FILE + "' doesn't exits.")
             obj.send("Please, contact owner of this bot.")
             return
 
         with open(HELP_FILE) as f:
-            obj.send_array(nickname, f.read().splitlines())
+            obj.send_array(info.nickname, f.read().splitlines())

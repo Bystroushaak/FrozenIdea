@@ -3,10 +3,14 @@
 #
 # Interpreter version: python 2.7
 #
-#= Imports ====================================================================
-from addcommand import AddCommand
-from listcommand import ListCommand
-from removecommand import RemoveCommand
-from helpcommand import HelpCommand
-from seediffcommand import SeeDiffCommand
-from setdiffcommand import SetDiffCommand
+# Imports =====================================================================
+import os
+import sys
+
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from ..todobot import MAX_DATA
+from ..todobot import TIME_DIFF
+from ..todobot import HELP_FILE
+from ..todobot import MIN_TIME_DIFF
+from ..todobot import OUTPUT_TEMPLATE

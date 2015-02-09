@@ -8,7 +8,7 @@ by Bystroushaak (bystrousak@kitakitsune.org)
 # This work is licensed under a Creative Commons 3.0 Unported License
 # (http://creativecommons.org/licenses/by/3.0/).
 #
-#= Imports ====================================================================
+# Imports =====================================================================
 import os
 import json
 import time
@@ -16,10 +16,12 @@ import os.path
 import argparse
 
 import commands
+
+from commands.state_info import StateInfo
 from frozenidea2 import FrozenIdea2
 
 
-#= Variables ==================================================================
+# Variables ===================================================================
 MAX_DATA = 25  # how much items will be stored for one user (warning: flood)
 HELP_FILE = "help.txt"  # path to file with help
 
@@ -28,14 +30,38 @@ MIN_TIME_DIFF = 60  # minimal time diff (used to prevent flood kick)
 
 DATA_FILE = "todo_data.json"
 UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
+OUTPUT_TEMPLATE = "You have $number TODO$s on your TODO list$match$excl"
 
 
-#= Functions & objects ========================================================
+# Functions & objects =========================================================
 class TODObot(FrozenIdea2):
     def __init__(self, nickname, chans, server, port=6667):
         super(TODObot, self).__init__(nickname, server, port)
         self.channels = chans
         self.read_data_file()
+
+        # yes, this have to be here, or wild
+        # ValueError: Attempted relative import beyond toplevel package
+        # will appear
+        from commands.addcommand import AddCommand
+        from commands.listcommand import ListCommand
+        from commands.removecommand import RemoveCommand
+        from commands.helpcommand import HelpCommand
+        from commands.seediffcommand import SeeDiffCommand
+        from commands.setdiffcommand import SetDiffCommand
+
+        self.valid_commands = {
+            "list": ListCommand(),
+            "ls": ListCommand(),
+            "add": AddCommand(),
+            "remove": RemoveCommand(),
+            "rm": RemoveCommand(),
+            "help": HelpCommand(),
+            "see_diff": SeeDiffCommand(),
+            "see": SeeDiffCommand(),
+            "set_diff": SetDiffCommand(),
+            "set": SetDiffCommand(),
+        }
 
     def on_quit(self):
         """
@@ -169,36 +195,26 @@ class TODObot(FrozenIdea2):
         """
         self.msg_to = nickname  # this is saved for .send()
         msg = msg.strip().replace("\n", "")
-        private_message = True if chan == nickname else False
-        output_template = "You have $number TODO$s on your TODO list$match$excl"
 
-        valid_commands = {
-            "list": commands.ListCommand(),
-            "ls": commands.ListCommand(),
-            "add": commands.AddCommand(),
-            "remove": commands.RemoveCommand(),
-            "rm": commands.RemoveCommand(),
-            "help": commands.HelpCommand(),
-            "see_diff": commands.SeeDiffCommand(),
-            "see": commands.SeeDiffCommand(),
-            "set_diff": commands.SetDiffCommand(),
-            "set": commands.SetDiffCommand(),
-        }
-        command, msg = self._parse_commands(msg)
+        # state info for command classes
+        info = StateInfo()
+        info.chan = chan
+        info.nickname = nickname
+        info.private_message = True if chan == nickname else False
+        info.command, info.msg = self._parse_commands(msg)
 
-        if command not in valid_commands:
+        if info.command not in self.valid_commands:
             self.send(UNKNOWN_COMMAND)
             return
 
         # read data
-        data = self.todo_data.get(nickname, [])
-        data_len = len(data)
+        info.data = self.todo_data.get(nickname, [])
+        info.data_len = len(info.data)
 
-        valid_commands[command].react(
-            self,
-            dict(globals().items() + locals().items())
-        )
+        # do the command
+        self.valid_commands[info.command].react(self, info)
 
+        # save the state
         self.save_data_file()
 
     def read_data_file(self):
@@ -226,7 +242,7 @@ class TODObot(FrozenIdea2):
         json.dump(data, open(DATA_FILE, "wt"), encoding="unicode_escape")
 
 
-#= Main program ===============================================================
+# Main program ================================================================
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='IRC TODObot')
     parser.add_argument(

@@ -3,19 +3,21 @@
 #
 # Interpreter version: python 2.7
 #
-#= Imports ====================================================================
-class SetDiffCommand:
-    def react(self, obj, obj_locals):
-        globals().update(obj_locals)
+# Imports =====================================================================
+from __init__ import MIN_TIME_DIFF
 
-        if msg == "":
+
+# Command definition ==========================================================
+class SetDiffCommand:
+    def react(self, obj, info):
+        if info.msg == "":
             obj.send("`set_diff` expects one parameter!")
             return
 
         # convert commands parameter to number
         index = -1
         try:
-            index = int(msg)
+            index = int(info.msg)
         except ValueError:
             obj.send("`set_diff` command expects one integer parameter!")
             return
@@ -31,5 +33,5 @@ class SetDiffCommand:
             )
             return
 
-        obj.diff_data[nickname] = index
+        obj.diff_data[info.nickname] = index
         obj.send("Time diff updated.")
