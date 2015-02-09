@@ -19,7 +19,7 @@ class ListCommand:
             return
 
         for i, line in enumerate(data):
-            if msg != "" and msg not in line:
+            if msg and msg not in str(line):
                 continue
             todos.append(" #" + str(i) + ": " + line)
         amount = len(todos)

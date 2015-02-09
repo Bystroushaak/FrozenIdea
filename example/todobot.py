@@ -201,7 +201,6 @@ class TODObot(FrozenIdea2):
 
         self.save_data_file()
 
-
     def read_data_file(self):
         """
         Read data from DATA_FILE, save them into properties .time_data and
