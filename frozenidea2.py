@@ -11,16 +11,16 @@ and Thyrst (https://github.com/Thyrst)
 #   :irc.cyberyard.net 401 TODObot � :No such nick/channel
 #   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
 #
-#= Imports ====================================================================
+# Imports =====================================================================
 import socket
 import select
 
 
-#= Variables ==================================================================
+# Variables ===================================================================
 ENDL = "\r\n"
 
 
-#= Functions & objects ========================================================
+# Functions & classes =========================================================
 class QuitException(Exception):
     def __init__(self, message):
         super(self, message)
@@ -86,12 +86,12 @@ class FrozenIdea2(object):
 
     def rename(self, new_name):
         """Change .nickname to `new_name`."""
-        if not self.nickname is new_name:
+        if self.nickname != new_name:
             self.nickname = new_name
             self._socket_send_line("NICK " + new_name)
 
     def nickname_used(self, nickname):
-        """Callback for `new_name` already in use"""
+        """Callback for `new_name` already in use."""
         self.nickname = nickname
 
     def send_msg(self, to, msg, msg_type=0):
@@ -106,10 +106,13 @@ class FrozenIdea2(object):
                         `2` for notice
         """
         try:
-            line = ["PRIVMSG " + to + " :" + msg,
-                    "PRIVMSG " + to + " :\x01ACTION " + msg + "\x01",
-                    "NOTICE " + to + " :" + msg][int(msg_type)]
-        except IndexError, e:
+            line = [
+                "PRIVMSG " + to + " :" + msg,
+                "PRIVMSG " + to + " :\x01ACTION " + msg + "\x01",
+                "NOTICE " + to + " :" + msg
+            ]
+            line = line[int(msg_type)]
+        except IndexError:
             line = "PRIVMSG " + to + " :" + msg
 
         self._socket_send_line(line)
@@ -121,9 +124,12 @@ class FrozenIdea2(object):
 
     def part(self, chan, msg = None):
         """Leave channel `chan`. Show .part_msg if set."""
-        if (msg == None):
+        if msg is None:
             msg = self.part_msg
-        print "---", chan
+
+        if self.verbose:
+            print "---", chan
+
         self._socket_send_line("PART " + chan + " :" + str(msg))
 
     def quit(self):
@@ -133,8 +139,8 @@ class FrozenIdea2(object):
 
     def run(self):
         """
-        Run the ._really_run() method and wrap check it for errors to ensure
-        clean quit.
+        Run the ._really_run() method and check it for errors to ensure clean
+        quit.
         """
         try:
             self._really_run()
@@ -189,9 +195,9 @@ class FrozenIdea2(object):
                 continue
 
             # get arrived messages
-            _ = msg_queue.split(ENDL)
-            msgs = _[:-1]
-            msg_queue = _[-1]
+            splitted = msg_queue.split(ENDL)
+            msgs = splitted[:-1]  # all fully parsed messages
+            msg_queue = splitted[-1]  # last one may not be whole
 
             for msg in msgs:
                 msg = bytes(msg)
@@ -202,13 +208,14 @@ class FrozenIdea2(object):
                     ping_val = msg.split()[1].strip()
                     self._socket_send_line("PONG " + ping_val)
                     self.on_ping(ping_val)
-                else:
-                    try:
-                        self._logic(msg)
-                    except QuitException:
-                        self.on_quit()
-                        self.quit()
-                        return
+                    continue
+
+                try:
+                    self._logic(msg)
+                except QuitException:
+                    self.on_quit()
+                    self.quit()
+                    return
 
     def _parse_msg(self, msg):
         """
@@ -220,35 +227,35 @@ class FrozenIdea2(object):
 
         nickname, msg = msg.split(" ", 1)
         if ":" in msg:
-            type_, msg = msg.split(":", 1)
+            msg_type, msg = msg.split(":", 1)
         else:
-            type_ = msg.strip()
+            msg_type = msg.strip()
             msg = ""
 
-        return nickname.strip(), type_.strip(), msg.strip()
+        return nickname.strip(), msg_type.strip(), msg.strip()
 
     def _logic(self, msg):
         """
         React to messages of given type. Here is what calls event callbacks.
         """
-        nickname, type_, msg = self._parse_msg(msg)
+        nickname, msg_type, msg = self._parse_msg(msg)
 
         # end of motd
-        if type_.startswith("376"):
+        if msg_type.startswith("376"):
             self.on_server_connected()
 
         # end of motd
-        elif type_.startswith("422"):
+        elif msg_type.startswith("422"):
             self.on_server_connected()
 
         # nickname already in use
-        elif type_.startswith("433"):
-            nickname = type_.split(" ", 2)[1]
+        elif msg_type.startswith("433"):
+            nickname = msg_type.split(" ", 2)[1]
             self.nickname_used(nickname)
 
         # nick list
-        elif type_.startswith("353"):
-            chan_name = "#" + type_.split("#")[-1].strip()
+        elif msg_type.startswith("353"):
+            chan_name = "#" + msg_type.split("#")[-1].strip()
 
             new_chan = True
             if chan_name in self.chans:
@@ -267,18 +274,28 @@ class FrozenIdea2(object):
                 self.on_joined_to_chan(chan_name)
 
         # PM or chan message
-        elif type_.startswith("PRIVMSG"):
+        elif msg_type.startswith("PRIVMSG"):
             nick, hostname = nickname.split("!", 1)
 
             if nick == self.nickname:
                 return
 
-            if "#" in type_:
+            if "#" in msg_type:
                 if msg.startswith("\x01ACTION"):
                     msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
-                    self.on_channel_action_message(type_.split()[-1], nick, hostname, msg)
+                    self.on_channel_action_message(
+                        msg_type.split()[-1],
+                        nick,
+                        hostname,
+                        msg
+                    )
                 else:
-                    self.on_channel_message(type_.split()[-1], nick, hostname, msg)
+                    self.on_channel_message(
+                        msg_type.split()[-1],
+                        nick,
+                        hostname,
+                        msg
+                    )
             else:
                 if msg.startswith("\x01ACTION"):
                     msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
@@ -287,10 +304,10 @@ class FrozenIdea2(object):
                     self.on_private_message(nick, hostname, msg)
 
         # kicked from chan
-        elif type_.startswith("404") or type_.startswith("KICK"):
-            type_ = type_.split()
-            chan_name = type_[1]
-            who = type_[2]
+        elif msg_type.startswith("404") or msg_type.startswith("KICK"):
+            msg_type = msg_type.split()
+            chan_name = msg_type[1]
+            who = msg_type[2]
             msg = msg.split(":")[0]  # TODO: parse kick message
 
             if who == self.nickname:
@@ -302,10 +319,10 @@ class FrozenIdea2(object):
                 self.on_somebody_kicked(chan_name, who, msg)
 
         # somebody joined channel
-        elif type_.startswith("JOIN"):
+        elif msg_type.startswith("JOIN"):
             nick = nickname.split("!")[0].strip()
             try:
-                chan_name = type_.split()[1].strip()
+                chan_name = msg_type.split()[1].strip()
             except IndexError, e:
                 chan_name = msg
 
@@ -315,7 +332,7 @@ class FrozenIdea2(object):
                     self.on_somebody_joined_chan(chan_name, nick)
 
         # user renamed
-        elif type_ == "NICK":
+        elif msg_type == "NICK":
             old_nick = nickname.split("!")[0].strip()
 
             for chan in self.chans.keys():
@@ -326,8 +343,8 @@ class FrozenIdea2(object):
             self.on_user_renamed(old_nick, msg)
 
         # user leaved the channel
-        elif type_.startswith("PART"):
-            chan = type_.split()[-1]
+        elif msg_type.startswith("PART"):
+            chan = msg_type.split()[-1]
             nick = nickname.split("!")[0].strip()
 
             if nick in self.chans[chan]:
@@ -336,7 +353,7 @@ class FrozenIdea2(object):
             self.on_somebody_leaved(chan, nick)
 
         # user quit the server
-        elif type_.startswith("QUIT"):
+        elif msg_type.startswith("QUIT"):
             nick = nickname.split("!")[0].strip()
 
             for chan in self.chans.keys():
@@ -344,7 +361,6 @@ class FrozenIdea2(object):
                     self.chans[chan].remove(nick)
 
             self.on_somebody_quit(nick)
-
 
     def on_server_connected(self):
         """
@@ -447,25 +463,3 @@ class FrozenIdea2(object):
         which takes care of everything you need to do.
         """
         pass
-
-
-#= Main program ===============================================================
-if __name__ == '__main__':
-    class Xex(FrozenIdea2):
-        def __init__(self, nickname, chan, server, port=6667):
-            super(Xex, self).__init__(nickname, server, port)
-            self.chan = chan
-
-        def on_server_connected(self):
-            self.join(self.chan)
-
-        def on_channel_message(self, chan_name, nickname, hostname, msg):
-            print self.chans
-            print "To:", chan_name
-            print "From:", nickname
-            print "Msg:", msg
-            print
-
-    x = Xex("xexasdasd", "#freedom99", "madjack.2600.net", 6667)
-    x.verbose = True
-    x.run()
