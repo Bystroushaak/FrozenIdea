@@ -91,26 +91,26 @@ class FrozenIdea2(object):
             self._socket_send_line("NICK " + new_name)
 
     def nickname_used(self, nickname):
-        """Callback for `new_name` already in use."""
+        """Callback when `new_name` is already in use."""
         self.nickname = nickname
 
     def send_msg(self, to, msg, msg_type=0):
         """
         Send message to given user or channel.
 
-        to - user or channel
-        msg - the message
-        type - type of message, it can be
-                        `0` for normal message,
-                        `1` for action message,
-                        `2` for notice
+        Args:
+            to (str): User or channel.
+            msg (str): Message.
+            msg_type (int, default 0): Type of the message. `0` for normal
+                     message, `1` for action message or `2` for notice.
         """
+        line = [
+            "PRIVMSG %s :%s" % (to, msg),
+            "PRIVMSG %s :\x01ACTION %s\x01" % (to, msg),
+            "NOTICE %s :%s" % (to, msg),
+        ]
+
         try:
-            line = [
-                "PRIVMSG " + to + " :" + msg,
-                "PRIVMSG " + to + " :\x01ACTION " + msg + "\x01",
-                "NOTICE " + to + " :" + msg
-            ]
             line = line[int(msg_type)]
         except IndexError:
             line = "PRIVMSG " + to + " :" + msg
@@ -122,7 +122,7 @@ class FrozenIdea2(object):
         for line in array:
             self.send_msg(to, line)
 
-    def part(self, chan, msg = None):
+    def part(self, chan, msg=None):
         """Leave channel `chan`. Show .part_msg if set."""
         if msg is None:
             msg = self.part_msg
@@ -232,11 +232,11 @@ class FrozenIdea2(object):
             msg_type = msg.strip()
             msg = ""
 
-        return nickname.strip(), msg_type.strip(), msg.strip()
+        return nickname.strip(), msg_type.strip(), msg.strip()  # TODO: namedtuple
 
     def _logic(self, msg):
         """
-        React to messages of given type. Here is what calls event callbacks.
+        React to messages of given type. This is what calls event callbacks.
         """
         nickname, msg_type, msg = self._parse_msg(msg)
 
@@ -280,28 +280,36 @@ class FrozenIdea2(object):
             if nick == self.nickname:
                 return
 
+            # channel message
             if "#" in msg_type:
+                msg_type = msg_type.split()[-1]
+
                 if msg.startswith("\x01ACTION"):
                     msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
                     self.on_channel_action_message(
-                        msg_type.split()[-1],
+                        msg_type,
                         nick,
                         hostname,
                         msg
                     )
-                else:
-                    self.on_channel_message(
-                        msg_type.split()[-1],
-                        nick,
-                        hostname,
-                        msg
-                    )
-            else:
-                if msg.startswith("\x01ACTION"):
-                    msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
-                    self.on_private_action_message(nick, hostname, msg)
-                else:
-                    self.on_private_message(nick, hostname, msg)
+                    return
+
+                self.on_channel_message(
+                    msg_type,
+                    nick,
+                    hostname,
+                    msg
+                )
+                return
+
+            # pm sg
+            if not msg.startswith("\x01ACTION"):
+                self.on_private_message(nick, hostname, msg)
+                return
+
+            # pm action message
+            msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
+            self.on_private_action_message(nick, hostname, msg)
 
         # kicked from chan
         elif msg_type.startswith("404") or msg_type.startswith("KICK"):
@@ -323,7 +331,7 @@ class FrozenIdea2(object):
             nick = nickname.split("!")[0].strip()
             try:
                 chan_name = msg_type.split()[1].strip()
-            except IndexError, e:
+            except IndexError:
                 chan_name = msg
 
             if nick != self.nickname:
