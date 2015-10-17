@@ -50,12 +50,16 @@ class TODObot(FrozenIdea2):
         from commands.seediffcommand import see_diff_command
         from commands.setdiffcommand import set_diff_command
 
+        def rm_and_list(*args, **kwargs):
+            remove_command(*args, **kwargs)
+            list_command(*args, **kwargs)
+
         self.valid_commands = {
             "list": list_command,
             "ls": list_command,
             "add": add_command,
             "remove": remove_command,
-            "rm": remove_command,
+            "rm": rm_and_list,
             "help": help_command,
             "see_diff": see_diff_command,
             "see": see_diff_command,
