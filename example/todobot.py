@@ -43,24 +43,24 @@ class TODObot(FrozenIdea2):
         # yes, this have to be here, or wild
         # ValueError: Attempted relative import beyond toplevel package
         # will appear
-        from commands.addcommand import AddCommand
-        from commands.listcommand import ListCommand
-        from commands.removecommand import RemoveCommand
-        from commands.helpcommand import HelpCommand
-        from commands.seediffcommand import SeeDiffCommand
-        from commands.setdiffcommand import SetDiffCommand
+        from commands.addcommand import add_command
+        from commands.listcommand import list_command
+        from commands.removecommand import remove_command
+        from commands.helpcommand import help_command
+        from commands.seediffcommand import see_diff_command
+        from commands.setdiffcommand import set_diff_command
 
         self.valid_commands = {
-            "list": ListCommand(),
-            "ls": ListCommand(),
-            "add": AddCommand(),
-            "remove": RemoveCommand(),
-            "rm": RemoveCommand(),
-            "help": HelpCommand(),
-            "see_diff": SeeDiffCommand(),
-            "see": SeeDiffCommand(),
-            "set_diff": SetDiffCommand(),
-            "set": SetDiffCommand(),
+            "list": list_command,
+            "ls": list_command,
+            "add": add_command,
+            "remove": remove_command,
+            "rm": remove_command,
+            "help": help_command,
+            "see_diff": see_diff_command,
+            "see": see_diff_command,
+            "set_diff": set_diff_command,
+            "set": set_diff_command,
         }
 
     def on_quit(self):
@@ -84,11 +84,14 @@ class TODObot(FrozenIdea2):
 
     def on_channel_message(self, chan_name, nickname, hostname, msg):
         """React to messages posted to channel."""
-        if msg.startswith(self.nickname + ": "):  # message for bot
+        # message for bot
+        if msg.startswith(self.nickname + ": "):
             msg = msg.split(" ", 1)[1]
             self.react_to_message(chan_name, nickname, msg)
-        else:                              # event for ticker
-            self.react_to_anything()
+            return
+
+        # event for ticker
+        self.react_to_anything()
 
     def on_private_message(self, nickname, hostname, msg):
         """React to messages posted to PM."""
@@ -171,8 +174,8 @@ class TODObot(FrozenIdea2):
 
         if " " in message:
             return message.split(" ", 1)
-        else:
-            return message, ""
+
+        return message, ""
 
     def send(self, msg):
         """
@@ -212,7 +215,7 @@ class TODObot(FrozenIdea2):
         info.data_len = len(info.data)
 
         # do the command
-        self.valid_commands[info.command].react(self, info)
+        self.valid_commands[info.command](self, info)
 
         # save the state
         self.save_data_file()

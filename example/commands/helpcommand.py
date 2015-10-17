@@ -10,12 +10,11 @@ from __init__ import HELP_FILE
 
 
 # Command definition ==========================================================
-class HelpCommand:
-    def react(self, obj, info):
-        if not os.path.exists(HELP_FILE):
-            obj.send("Help file '" + HELP_FILE + "' doesn't exits.")
-            obj.send("Please, contact owner of this bot.")
-            return
+def help_command(obj, info):
+    if not os.path.exists(HELP_FILE):
+        obj.send("Help file '" + HELP_FILE + "' doesn't exits.")
+        obj.send("Please, contact owner of this bot.")
+        return
 
-        with open(HELP_FILE) as f:
-            obj.send_array(info.nickname, f.read().splitlines())
+    with open(HELP_FILE) as f:
+        obj.send_array(info.nickname, f.read().splitlines())
