@@ -284,4 +284,7 @@ if __name__ == '__main__':
     bot = TODObot(args.nick, args.channels, args.server, args.port)
     bot.verbose = True
 
-    bot.run()
+    try:
+        bot.run()
+    except KeyboardInterrupt:
+        print "Clean exit."
