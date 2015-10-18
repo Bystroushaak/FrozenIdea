@@ -302,7 +302,7 @@ class FrozenIdea2(object):
                 )
                 return
 
-            # pm sg
+            # pm msg
             if not msg.startswith("\x01ACTION"):
                 self.on_private_message(nick, hostname, msg)
                 return
