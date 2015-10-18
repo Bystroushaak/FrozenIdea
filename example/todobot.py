@@ -15,22 +15,22 @@ import time
 import os.path
 import argparse
 
-import commands
-
-from commands.state_info import StateInfo
 from frozenidea2 import FrozenIdea2
+
+from commands import TIME_DIFF
+from commands.state_info import StateInfo
+
+from commands.addcommand import add_command
+from commands.listcommand import list_command
+from commands.removecommand import remove_command
+from commands.helpcommand import help_command
+from commands.seediffcommand import see_diff_command
+from commands.setdiffcommand import set_diff_command
 
 
 # Variables ===================================================================
-MAX_DATA = 25  # how much items will be stored for one user (warning: flood)
-HELP_FILE = "help.txt"  # path to file with help
-
-TIME_DIFF = 60 * 60 * 24  # 1 hour (default time diff)
-MIN_TIME_DIFF = 60  # minimal time diff (used to prevent flood kick)
-
 DATA_FILE = "todo_data.json"
 UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
-OUTPUT_TEMPLATE = "You have $number TODO$s on your TODO list$match$excl"
 
 
 # Functions & objects =========================================================
@@ -39,16 +39,6 @@ class TODObot(FrozenIdea2):
         super(TODObot, self).__init__(nickname, server, port)
         self.channels = chans
         self.read_data_file()
-
-        # yes, this have to be here, or wild
-        # ValueError: Attempted relative import beyond toplevel package
-        # will appear
-        from commands.addcommand import add_command
-        from commands.listcommand import list_command
-        from commands.removecommand import remove_command
-        from commands.helpcommand import help_command
-        from commands.seediffcommand import see_diff_command
-        from commands.setdiffcommand import set_diff_command
 
         def rm_and_list(*args, **kwargs):
             remove_command(*args, **kwargs)
