@@ -42,6 +42,13 @@ class TODObot(FrozenIdea2):
 
         def rm_and_list(*args, **kwargs):
             remove_command(*args, **kwargs)
+
+            # remove info.msg to prevent filtering of the listed messages
+            info = kwargs.get("info", None)
+            if not info:
+                info = args[-1]
+            info.msg = ""
+
             list_command(*args, **kwargs)
 
         self.valid_commands = {
