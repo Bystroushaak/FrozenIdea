@@ -17,7 +17,7 @@ def list_command(obj, info):
         return
 
     for line_cnt, line in enumerate(info.data):
-        if info.msg and info.msg not in str(line):
+        if info.msg and info.msg not in line:
             continue
 
         todos.append(" #%d: %s" % (line_cnt, line))
