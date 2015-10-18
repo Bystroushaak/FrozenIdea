@@ -47,6 +47,7 @@ class TODObot(FrozenIdea2):
         self.valid_commands = {
             "list": list_command,
             "ls": list_command,
+            "la": list_command,
             "add": add_command,
             "remove": remove_command,
             "rm": rm_and_list,
@@ -197,7 +198,7 @@ class TODObot(FrozenIdea2):
         info = StateInfo()
         info.chan = chan
         info.nickname = nickname
-        info.private_message = True if chan == nickname else False
+        info.private_message = (chan == nickname)
         info.command, info.msg = self._parse_commands(msg)
 
         if info.command not in self.valid_commands:
