@@ -6,6 +6,8 @@
 # Imports =====================================================================
 import string
 
+from normalize_cz_unicode import normalize
+
 
 # Command definition ==========================================================
 def list_command(obj, info):
@@ -17,10 +19,10 @@ def list_command(obj, info):
         return
 
     for line_cnt, line in enumerate(info.data):
-        if info.msg and info.msg not in line:
+        if info.msg and normalize(info.msg) not in normalize(line):
             continue
 
-        todos.append(" #%d: %s" % (line_cnt, line))
+        todos.append(" #%d: %s" % (line_cnt, normalize(line)))
 
     amount = len(todos)
 
