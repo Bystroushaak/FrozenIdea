@@ -156,7 +156,7 @@ class TODObot(FrozenIdea2):
         """
         Send user information about their TODO after some time (see TIME_DIFF).
         """
-        num = len(self.todo_data[username])
+        num = len(self.todo_data.get(username, []))
         self.send_msg(
             username,
             "You have " + str(num) +
