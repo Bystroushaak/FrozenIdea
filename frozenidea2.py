@@ -73,12 +73,19 @@ class FrozenIdea2(object):
             self.connect()
 
     def connect(self):
-        """Connect socket to server"""
+        """
+        Connect socket to server.
+        """
         self._socket.connect((self.server, int(self.port)))
         self._socket.setblocking(0)
 
     def _socket_send_line(self, line):
-        """Send line thru socket. Adds ENDL if there is not already one."""
+        """
+        Send line thru socket. Adds ENDL if there is not already one.
+
+        Args:
+            line (str): Line which will be sent to socket.
+        """
         if not line.endswith(ENDL):
             line += ENDL
 
@@ -95,13 +102,25 @@ class FrozenIdea2(object):
         self._socket.send(line)
 
     def join(self, chan):
-        """Join channel. Adds # before `chan`, if there is not already one."""
+        """
+        Join channel. Adds # before `chan`, if there is not already one.
+
+        Args:
+            chan (str): Name of the channel.
+        """
         if not chan.startswith("#"):
             chan = "#" + chan
 
         self._socket_send_line("JOIN " + chan)
 
     def join_all(self, chans=None):
+        """
+        Join all `chans`. If the `chans` is ``None``, use
+        :attr:`self.join_all`.
+
+        Args:
+            chans (list, default None): List of the channels to join.
+        """
         if chans is None:
             chans = self.join_list
 
@@ -113,14 +132,15 @@ class FrozenIdea2(object):
                     self.join(c)
 
     def rename(self, new_name):
-        """Change .nickname to `new_name`."""
+        """
+        Change :attr:`self.nickname` to `new_name`.
+
+        Args:
+            new_name (str): New nickname.
+        """
         if self.nickname != new_name:
             self.nickname = new_name
             self._socket_send_line("NICK " + new_name)
-
-    def nickname_used(self, nickname):
-        """Callback when `new_name` is already in use."""
-        self.nickname = nickname
 
     def send_msg(self, to, msg, msg_type=0):
         """
@@ -146,12 +166,24 @@ class FrozenIdea2(object):
         self._socket_send_line(line)
 
     def send_array(self, to, array):
-        """Send list of messages from `array` to `to`."""
+        """
+        Send list of messages from `array` to `to`.
+
+        Args:
+            to (str): User or channel.
+            array (list): List of the messages.
+        """
         for line in array:
             self.send_msg(to, line)
 
     def part(self, chan, msg=None):
-        """Leave channel `chan`. Show .part_msg if set."""
+        """
+        Leave channel `chan`. Show .part_msg if set.
+
+        Args:
+            chan (str): Name of the channel.
+            msg (str, default None): Optional part message.
+        """
         if msg is None:
             msg = self.part_msg
 
@@ -161,7 +193,10 @@ class FrozenIdea2(object):
         self._socket_send_line("PART " + chan + " :" + str(msg))
 
     def quit(self):
-        """Leave all channels and close connection. Show .quit_msg if set."""
+        """
+        Leave all channels and close connection. Show :attr:`self.quit_msg`
+        if set.
+        """
         self._socket_send_line("QUIT :" + self.quit_msg)
         self._socket.close()
 
@@ -250,7 +285,11 @@ class FrozenIdea2(object):
         """
         Get from who is the `msg`, which type it is and it's body.
 
-        Returns tuple (from, type, msg_body).
+        Args:
+            msg (str): Message obtained from the server.
+
+        Returns:
+            obj: :class:`ParsedMsg` instance.
         """
         msg = msg[1:]  # remove : from the beggining
 
@@ -269,7 +308,10 @@ class FrozenIdea2(object):
 
     def _logic(self, msg):
         """
-        React to messages of given type. This is what calls event callbacks.
+        React to `msg`. This is what calls event callbacks.
+
+        Args:
+            msg (str): Message from the server.
         """
         parsed = self._parse_msg(msg)
 
@@ -284,7 +326,7 @@ class FrozenIdea2(object):
         # nickname already in use
         elif parsed.type.startswith("433"):
             nickname = parsed.type.split(" ", 2)[1]
-            self.nickname_used(nickname)
+            self.on_nickname_used(nickname)
 
         # nick list
         elif parsed.type.startswith("353"):
@@ -404,6 +446,15 @@ class FrozenIdea2(object):
 
             self.on_somebody_quit(nick)
 
+    def on_nickname_used(self, nickname):
+        """
+        Callback when `nickname` is already in use.
+
+        Args:
+            nickname (str): Used nickname.
+        """
+        self.rename(nickname + "_")
+
     def on_server_connected(self):
         """
         Called when bot is successfully connected to the server.
@@ -414,79 +465,132 @@ class FrozenIdea2(object):
         self._socket_send_line("MODE " + self.nickname + " +B")
         self.join_all()
 
-    def on_joined_to_chan(self, chan_name):
-        """Called when the bot has successfully joined the channel."""
+    def on_joined_to_chan(self, chan):
+        """
+        Called when the bot has successfully joined the channel.
+
+        Args:
+            chan (str): Name fo the channel the bot just joined.
+        """
         pass
 
-    def on_somebody_joined_chan(self, chan_name, nick):
-        """Called when somebody joined the channel you are in."""
+    def on_somebody_joined_chan(self, chan, who):
+        """
+        Called when somebody joined the channel you are in.
+
+        Args:
+            chan (str): Name fo the channel where the new user arrived.
+            who (str): Name of the user who just joined.
+        """
         pass
 
-    def on_channel_message(self, chan_name, nickname, hostname, msg):
+    def on_channel_message(self, chan, who, hostname, msg):
         """
         Called when somebody posted message to a channel you are in.
 
-        chan_name -- name of the channel (starts with #)
-        nickname -- name of the origin of the message
-        hostname -- users hostname - IP address usually
-        msg -- users message
+        Args:
+            chan (str): Name of the channel (starts with #).
+            who (str): Name of the origin of the message.
+            hostname (str): User's hostname - IP address usually.
+            msg (str): User's message.
         """
         pass
 
-    def on_private_message(self, nickname, hostname, msg):
+    def on_private_message(self, who, hostname, msg):
         """
         Called when somebody send you private message.
 
-        nickname -- name of the origin of the message
-        hostname -- users hostname - IP address usually
-        msg -- users message
+        Args:
+            who (str): Name of the origin of the message.
+            hostname (str): User's hostname - IP address usually.
+            msg (str): User's message.
         """
         pass
 
-    def on_channel_action_message(self, chan_name, nickname, hostname, msg):
-        """Called for channel message with action."""
+    def on_channel_action_message(self, chan, who, hostname, msg):
+        """
+        Called for channel message with action.
+
+        Args:
+            chan (str): Name of the channel (starts with #) where the
+                event occured.
+            who (str): Name of the origin of the message.
+            hostname (str): User's hostname - IP address usually.
+            msg (str): User's message.
+        """
         pass
 
-    def on_private_action_message(self, nickname, hostname, msg):
-        """Called for private message with action."""
+    def on_private_action_message(self, who, hostname, msg):
+        """
+        Called for private message with action.
+
+        Args:
+            who (str): Name of the origin of the message.
+            hostname (str): User's hostname - IP address usually.
+            msg (str): User's message.
+        """
         pass
 
     def on_user_renamed(self, old_nick, new_nick):
         """
         Called when user renamed himself.
 
-        See .chans property, where user nicknames are tracked and stored.
+        See :attr:`.chans` property, where user nicknames are tracked and
+        stored.
+
+        Args:
+            old_nick (str): Old nick used by user.
+            new_nick (str): Nick into which user just renamed itself.
         """
         pass
 
-    def on_kick(self, chan_name, who):
+    def on_kick(self, chan, who):
         """
         Called when somebody kicks you from the channel.
 
-        who -- who kicked you
+        Args:
+            chan (str): Name of the channel (starts with #) where the
+                event occured.
+            who (str): Nickname of the user who just kicked the bot.
         """
         pass
 
-    def on_somebody_kicked(self, chan_name, who, kicked_user):
+    def on_somebody_kicked(self, chan, who, kicked_user):
         """
-        Called when somebody kick someone from `chan_name`.
+        Called when somebody kick someone from `chan`.
 
-        who -- who kicked `kicked_user`
-        kicked_user -- person who was kicked from chan
+        Args:
+            chan (str): Name of the channel (starts with #) where the
+                event occured.
+            who (str): Nickname of the user who kicked `kicked_user`.
+            kicked_user (str): Nickname of the user who was kicked from chan.
         """
         pass
 
-    def on_somebody_leaved(self, chan_name, nick):
-        """Called when somebody leaves the channel."""
+    def on_somebody_leaved(self, chan, who):
+        """
+        Called when somebody leaved the channel.
+
+        Args:
+            chan (str): Name of the channel (starts with #) where the
+                event occured.
+            who (str): Nickname of the user who just leaved.
+        """
         pass
 
-    def on_somebody_quit(self, nick):
-        """Called when somebody leaves the server."""
+    def on_somebody_quit(self, who):
+        """
+        Called when somebody leaves the server.
+
+        Args:
+            who (str): Nickname of the user who just leaved.
+        """
         pass
 
     def on_select_timeout(self):
         """
-        Called every 60s if nothing else is happening on the socket.
+        Called every :attr:`self.socket_timeout` seconds if nothing else is
+        happening on the socket.
 
         This can be usefull source of event ticks.
 
@@ -504,6 +608,11 @@ class FrozenIdea2(object):
 
         Attr:
             ping_val (str): Value of the ping message sent from the server.
+
+        See:
+            self.last_ping for the timestamp of the last ping.
+            self.default_ping_diff for the time considered to be normal ping
+                distance.
         """
         now = time.time()
 
