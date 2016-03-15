@@ -49,7 +49,7 @@ class FrozenIdea2(object):
 
     Raise QuitException if you wish to quit.
     """
-    def __init__(self, nickname, server, port):
+    def __init__(self, nickname, server, port, join_list=None, lazy=False):
         self.nickname = nickname
         self.server = server
         self.port = port
@@ -59,17 +59,23 @@ class FrozenIdea2(object):
         self.quit_msg = self.part_msg
         self.password = ""
         self.verbose = False
+
         self.socket_timeout = 60
         self.last_ping = 0
+        self.default_ping_diff = 60 * 5  # 20m
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._connect()
         self.chans = {}
+        self.join_list = join_list or []
 
-    def _connect(self):
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        if not lazy:
+            self.connect()
+
+    def connect(self):
         """Connect socket to server"""
-        self.socket.connect((self.server, int(self.port)))
-        self.socket.setblocking(0)
+        self._socket.connect((self.server, int(self.port)))
+        self._socket.setblocking(0)
 
     def _socket_send_line(self, line):
         """Send line thru socket. Adds ENDL if there is not already one."""
@@ -86,7 +92,7 @@ class FrozenIdea2(object):
             except UnicodeEncodeError:
                 line = bytearray(line, "ascii", "ignore")
 
-        self.socket.send(line)
+        self._socket.send(line)
 
     def join(self, chan):
         """Join channel. Adds # before `chan`, if there is not already one."""
@@ -94,6 +100,17 @@ class FrozenIdea2(object):
             chan = "#" + chan
 
         self._socket_send_line("JOIN " + chan)
+
+    def join_all(self, chans=None):
+        if chans is None:
+            chans = self.join_list
+
+        for chan in chans:
+            if isinstance(chan, basestring):
+                self.join(chan)
+            elif type(chan) in [tuple, list]:
+                for c in chan:
+                    self.join(c)
 
     def rename(self, new_name):
         """Change .nickname to `new_name`."""
@@ -146,7 +163,7 @@ class FrozenIdea2(object):
     def quit(self):
         """Leave all channels and close connection. Show .quit_msg if set."""
         self._socket_send_line("QUIT :" + self.quit_msg)
-        self.socket.close()
+        self._socket.close()
 
     def run(self):
         """
@@ -187,7 +204,7 @@ class FrozenIdea2(object):
         while True:
             # select read doesn't consume that much resources from server
             ready_to_read, ready_to_write, in_error = select.select(
-                [self.socket],
+                [self._socket],
                 [],
                 [],
                 self.socket_timeout
@@ -199,7 +216,7 @@ class FrozenIdea2(object):
                 continue
 
             # read 4096B from the server
-            msg_queue += self.socket.recv(4096)
+            msg_queue += self._socket.recv(4096)
 
             # whole message doesn't arrived yet
             if ENDL not in msg_queue:
@@ -389,11 +406,13 @@ class FrozenIdea2(object):
 
     def on_server_connected(self):
         """
-        Called when bot is successfully connected to server.
+        Called when bot is successfully connected to the server.
 
-        It is good idea to put here .join() call.
+        By default, the +B mode is set to the bot and then bot joins all
+        channels defined in :attr:`self.join_list`.
         """
-        pass
+        self._socket_send_line("MODE " + self.nickname + " +B")
+        self.join_all()
 
     def on_joined_to_chan(self, chan_name):
         """Called when the bot has successfully joined the channel."""
@@ -479,8 +498,18 @@ class FrozenIdea2(object):
         """
         Called when the server sends PING to the bot. PONG is automatically
         sent back.
+
+        By default, keep track of the :attr:`self.last_ping` and reconnect, if
+        the diff is bigger than :attr:`self.default_ping_diff`.
+
+        Attr:
+            ping_val (str): Value of the ping message sent from the server.
         """
-        pass
+        now = time.time()
+
+        if now - self.last_ping >= self.default_ping_diff:
+            self.quit()
+            self.connect()
 
     def on_quit(self):
         """
