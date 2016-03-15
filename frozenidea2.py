@@ -38,23 +38,43 @@ class FrozenIdea2(object):
 
     This class allows you to write easily event driven IRC bots.
 
-    Notable properties:
-        .real_name -- real name irc property - shown in whois
-        .part_msg  -- message shown when IRC bot is leaving the channel
-        .quit_msg  -- same as .part_msg, but when quitting
-        .password  -- password for irc server (not channel)
-        .chans     -- dict {"chan_name": [users,]}
-        .verbose   -- should the bot print all incomming messages to stdin?
+    Attributes:
+        nickname (str): Nickname used by the bot
+        password (str): Password for irc server (not channel).
+        real_name (str): Real name irc property - shown in whois.
+        part_msg (str): Message shown when IRC bot is leaving the channel.
+        quit_msg (str): Same as `part_msg`, but when quitting.
+        chans (str): Dict {"chan_name": [users,]}.
+        join_list (list): List of the channel names to which the bot should
+            join.
+        socket_timeout (int): Timeout for the socket in seconds. Default 60.
+        last_ping (float): Timestamp of the last PING message.
+        default_ping_diff (int): Time delta between pings. Used for reconnects.
+            Default 300s.
+        verbose (str): Should the bot print all incomming messages to stdout?
                       default False
+        port (int): Port of the server the bot is connected to.
+        server (str): Hostname of the server the bot is connected to.
+        _socket (obj): Socket object. Don't mess with this.
 
     Raise QuitException if you wish to quit.
     """
     def __init__(self, nickname, server, port, join_list=None, lazy=False):
-        self.nickname = nickname
-        self.server = server
-        self.port = port
+        """
+        Constructor.
 
+        Args:
+            nickname (str): Name the bot should use.
+            server (str): Address of the server.
+            port (int): Port the server uses for IRC.
+            join_list (list, default None): List of the channels to which the
+                bot should join after connection is established.
+            lazy (bool, default False): Should the bot be lazy and not connect
+                when the constructor is called?
+        """
+        self.nickname = nickname
         self.real_name = "FrozenIdea2 IRC bot"
+
         self.part_msg = "Fuck it, I quit."
         self.quit_msg = self.part_msg
         self.password = ""
@@ -67,6 +87,8 @@ class FrozenIdea2(object):
         self.chans = {}
         self.join_list = join_list or []
 
+        self.server = server
+        self.port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         if not lazy:
