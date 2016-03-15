@@ -12,8 +12,10 @@ and Thyrst (https://github.com/Thyrst)
 #   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
 #
 # Imports =====================================================================
+import time
 import socket
 import select
+from collections import namedtuple
 
 
 # Variables ===================================================================
@@ -24,6 +26,10 @@ ENDL = "\r\n"
 class QuitException(Exception):
     def __init__(self, message):
         super(self, message)
+
+
+class ParsedMsg(namedtuple("ParsedMsg", "nick type text")):
+    pass
 
 
 class FrozenIdea2(object):
@@ -53,6 +59,8 @@ class FrozenIdea2(object):
         self.quit_msg = self.part_msg
         self.password = ""
         self.verbose = False
+        self.socket_timeout = 60
+        self.last_ping = 0
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._connect()
@@ -73,7 +81,10 @@ class FrozenIdea2(object):
         try:
             line = bytes(line)
         except UnicodeEncodeError:
-            line = bytearray(line, "ascii", "ignore")
+            try:
+                line = bytes(line.decode("utf-8"))
+            except UnicodeEncodeError:
+                line = bytearray(line, "ascii", "ignore")
 
         self.socket.send(line)
 
@@ -179,7 +190,7 @@ class FrozenIdea2(object):
                 [self.socket],
                 [],
                 [],
-                60
+                self.socket_timeout
             )
 
             # timeouted, call .on_select_timeout()
@@ -208,6 +219,7 @@ class FrozenIdea2(object):
                     ping_val = msg.split()[1].strip()
                     self._socket_send_line("PONG " + ping_val)
                     self.on_ping(ping_val)
+                    self.last_ping = time.time()
                     continue
 
                 try:
@@ -232,30 +244,34 @@ class FrozenIdea2(object):
             msg_type = msg.strip()
             msg = ""
 
-        return nickname.strip(), msg_type.strip(), msg.strip()  # TODO: namedtuple
+        return ParsedMsg(
+            nick=nickname.strip(),
+            type=msg_type.strip(),
+            text=msg.strip(),
+        )
 
     def _logic(self, msg):
         """
         React to messages of given type. This is what calls event callbacks.
         """
-        nickname, msg_type, msg = self._parse_msg(msg)
+        parsed = self._parse_msg(msg)
 
         # end of motd
-        if msg_type.startswith("376"):
+        if parsed.type.startswith("376"):
             self.on_server_connected()
 
         # end of motd
-        elif msg_type.startswith("422"):
+        elif parsed.type.startswith("422"):
             self.on_server_connected()
 
         # nickname already in use
-        elif msg_type.startswith("433"):
-            nickname = msg_type.split(" ", 2)[1]
+        elif parsed.type.startswith("433"):
+            nickname = parsed.type.split(" ", 2)[1]
             self.nickname_used(nickname)
 
         # nick list
-        elif msg_type.startswith("353"):
-            chan_name = "#" + msg_type.split("#")[-1].strip()
+        elif parsed.type.startswith("353"):
+            chan_name = "#" + parsed.type.split("#")[-1].strip()
 
             new_chan = True
             if chan_name in self.chans:
@@ -265,7 +281,7 @@ class FrozenIdea2(object):
             # get list of nicks, remove chan statuses (op/halfop/..)
             msg = map(
                 lambda nick: nick if nick[0] not in "&@%+" else nick[1:],
-                msg.split()
+                parsed.text.split()
             )
 
             self.chans[chan_name] = msg
@@ -274,18 +290,19 @@ class FrozenIdea2(object):
                 self.on_joined_to_chan(chan_name)
 
         # PM or chan message
-        elif msg_type.startswith("PRIVMSG"):
-            nick, hostname = nickname.split("!", 1)
+        elif parsed.type.startswith("PRIVMSG"):
+            nick, hostname = parsed.nick.split("!", 1)
 
             if nick == self.nickname:
                 return
 
             # channel message
-            if "#" in msg_type:
-                msg_type = msg_type.split()[-1]
+            if "#" in parsed.type:
+                msg_type = parsed.type.split()[-1]
 
-                if msg.startswith("\x01ACTION"):
-                    msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
+                if parsed.text.startswith("\x01ACTION"):
+                    msg = parsed.text.split("\x01ACTION", 1)[1]
+                    msg = msg.strip().strip("\x01")
                     self.on_channel_action_message(
                         msg_type,
                         nick,
@@ -298,25 +315,25 @@ class FrozenIdea2(object):
                     msg_type,
                     nick,
                     hostname,
-                    msg
+                    parsed.text
                 )
                 return
 
             # pm msg
-            if not msg.startswith("\x01ACTION"):
-                self.on_private_message(nick, hostname, msg)
+            if not parsed.text.startswith("\x01ACTION"):
+                self.on_private_message(nick, hostname, parsed.text)
                 return
 
             # pm action message
-            msg = msg.split("\x01ACTION", 1)[1].strip().strip("\x01")
+            msg = parsed.text.split("\x01ACTION", 1)[1].strip().strip("\x01")
             self.on_private_action_message(nick, hostname, msg)
 
         # kicked from chan
-        elif msg_type.startswith("404") or msg_type.startswith("KICK"):
-            msg_type = msg_type.split()
+        elif parsed.type.startswith("404") or parsed.type.startswith("KICK"):
+            msg_type = parsed.type.split()
             chan_name = msg_type[1]
             who = msg_type[2]
-            msg = msg.split(":")[0]  # TODO: parse kick message
+            msg = parsed.text.split(":")[0]  # TODO: parse kick message
 
             if who == self.nickname:
                 self.on_kick(chan_name, msg)
@@ -327,12 +344,12 @@ class FrozenIdea2(object):
                 self.on_somebody_kicked(chan_name, who, msg)
 
         # somebody joined channel
-        elif msg_type.startswith("JOIN"):
-            nick = nickname.split("!")[0].strip()
+        elif parsed.type.startswith("JOIN"):
+            nick = parsed.nick.split("!")[0].strip()
             try:
-                chan_name = msg_type.split()[1].strip()
+                chan_name = parsed.type.split()[1].strip()
             except IndexError:
-                chan_name = msg
+                chan_name = parsed.text
 
             if nick != self.nickname:
                 if nick not in self.chans[chan_name]:
@@ -340,20 +357,20 @@ class FrozenIdea2(object):
                     self.on_somebody_joined_chan(chan_name, nick)
 
         # user renamed
-        elif msg_type == "NICK":
-            old_nick = nickname.split("!")[0].strip()
+        elif parsed.type == "NICK":
+            old_nick = parsed.nick.split("!")[0].strip()
 
             for chan in self.chans.keys():
                 if old_nick in self.chans[chan]:
                     self.chans[chan].remove(old_nick)
-                    self.chans[chan].append(msg)
+                    self.chans[chan].append(parsed.text)
 
-            self.on_user_renamed(old_nick, msg)
+            self.on_user_renamed(old_nick, parsed.text)
 
         # user leaved the channel
-        elif msg_type.startswith("PART"):
-            chan = msg_type.split()[-1]
-            nick = nickname.split("!")[0].strip()
+        elif parsed.type.startswith("PART"):
+            chan = parsed.type.split()[-1]
+            nick = parsed.nick.split("!")[0].strip()
 
             if nick in self.chans[chan]:
                 self.chans[chan].remove(nick)
@@ -361,8 +378,8 @@ class FrozenIdea2(object):
             self.on_somebody_leaved(chan, nick)
 
         # user quit the server
-        elif msg_type.startswith("QUIT"):
-            nick = nickname.split("!")[0].strip()
+        elif parsed.type.startswith("QUIT"):
+            nick = parsed.nick.split("!")[0].strip()
 
             for chan in self.chans.keys():
                 if nick in self.chans[chan]:
