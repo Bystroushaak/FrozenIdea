@@ -18,20 +18,17 @@ import select
 from collections import namedtuple
 
 
-# Variables ===================================================================
-ENDL = "\r\n"
-
-
-# Functions & classes =========================================================
+# Exceptions ==================================================================
 class QuitException(Exception):
-    def __init__(self, message):
-        super(self, message)
+    pass
 
 
+# Datastructures ==============================================================
 class ParsedMsg(namedtuple("ParsedMsg", "nick type text")):
     pass
 
 
+# Class definition ============================================================
 class FrozenIdea2(object):
     """
     FrozenIdea2 IRC bot template class.
@@ -56,8 +53,9 @@ class FrozenIdea2(object):
         port (int): Port of the server the bot is connected to.
         server (str): Hostname of the server the bot is connected to.
         _socket (obj): Socket object. Don't mess with this.
+        ENDL (str): Definition of end of the line sequence.
 
-    Raise QuitException if you wish to quit.
+    Raise :class:`QuitException` if you wish to quit.
     """
     def __init__(self, nickname, server, port, join_list=None, lazy=False):
         """
@@ -90,6 +88,7 @@ class FrozenIdea2(object):
         self.server = server
         self.port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._endl = "\r\n"
 
         if not lazy:
             self.connect()
@@ -103,13 +102,13 @@ class FrozenIdea2(object):
 
     def _socket_send_line(self, line):
         """
-        Send line thru socket. Adds ENDL if there is not already one.
+        Send line thru socket. Adds self._endl if there is not already one.
 
         Args:
             line (str): Line which will be sent to socket.
         """
-        if not line.endswith(ENDL):
-            line += ENDL
+        if not line.endswith(self._endl):
+            line += self._endl
 
         # lot of fun with this shit -- if you wan't to enjoy some unicode
         # errors, try sending "��"
@@ -276,11 +275,11 @@ class FrozenIdea2(object):
             msg_queue += self._socket.recv(4096)
 
             # whole message doesn't arrived yet
-            if ENDL not in msg_queue:
+            if self._endl not in msg_queue:
                 continue
 
             # get arrived messages
-            splitted = msg_queue.split(ENDL)
+            splitted = msg_queue.split(self._endl)
             msgs = splitted[:-1]  # all fully parsed messages
             msg_queue = splitted[-1]  # last one may not be whole
 
