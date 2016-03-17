@@ -37,7 +37,7 @@ UNKNOWN_COMMAND = "Unknown command or bad syntax! Type 'help' for help."
 class TODObot(FrozenIdea2):
     def __init__(self, nickname, chans, server, port=6667):
         super(TODObot, self).__init__(nickname, server, port)
-        self.channels = chans
+        self.join_list = chans
         self.read_data_file()
 
         def rm_and_list(*args, **kwargs):
@@ -72,17 +72,6 @@ class TODObot(FrozenIdea2):
         Data are also saved periodically after each change.
         """
         self.save_data_file()
-
-    def on_server_connected(self):
-        """
-        Join proper channels.
-        """
-        self._socket_send_line("MODE " + self.nickname + " +B")
-        if type(self.channels) is str:
-            self.join(self.channels)
-        elif type(self.channels) in [tuple, list]:
-            for chan in self.channels:
-                self.join(chan)
 
     def on_channel_message(self, chan_name, nickname, hostname, msg):
         """React to messages posted to channel."""
