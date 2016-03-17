@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-FrozenIdea2 event driven IRC bot class
+FrozenIdea event driven IRC bot class
 by  Bystroushaak (bystrousak@kitakitsune.org)
 and Thyrst (https://github.com/Thyrst)
 """
@@ -29,9 +29,9 @@ class ParsedMsg(namedtuple("ParsedMsg", "nick type text")):
 
 
 # Class definition ============================================================
-class FrozenIdea2(object):
+class FrozenIdea(object):
     """
-    FrozenIdea2 IRC bot template class.
+    FrozenIdea IRC bot template class.
 
     This class allows you to write easily event driven IRC bots.
 
@@ -71,7 +71,7 @@ class FrozenIdea2(object):
                 when the constructor is called?
         """
         self.nickname = nickname
-        self.real_name = "FrozenIdea2 IRC bot"
+        self.real_name = "FrozenIdea IRC bot"
 
         self.part_msg = "Fuck it, I quit."
         self.quit_msg = self.part_msg
