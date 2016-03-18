@@ -79,7 +79,7 @@ class FrozenIdea(object):
         self.verbose = False
 
         self.socket_timeout = 60
-        self.last_ping = 0
+        self.last_ping = time.time()
         self.default_ping_diff = 60 * 5  # 20m
 
         self.chans = {}
@@ -574,7 +574,8 @@ class FrozenIdea(object):
                 event occured.
             who (str): Nickname of the user who just kicked the bot.
         """
-        pass
+        time.sleep(5)
+        self.join(chan)
 
     def on_somebody_kicked(self, chan, who, kicked_user):
         """
