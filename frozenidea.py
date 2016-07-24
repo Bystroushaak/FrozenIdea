@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
 FrozenIdea event driven IRC bot class
@@ -15,6 +15,7 @@ and Thyrst (https://github.com/Thyrst)
 import time
 import socket
 import select
+import ssl
 from collections import namedtuple
 
 
@@ -57,7 +58,8 @@ class FrozenIdea(object):
 
     Raise :class:`QuitException` if you wish to quit.
     """
-    def __init__(self, nickname, server, port, join_list=None, lazy=False):
+    def __init__(
+        self, nickname, server, port, join_list=None, lazy=False, _ssl=False):
         """
         Constructor.
 
@@ -89,6 +91,10 @@ class FrozenIdea(object):
         self.port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._endl = "\r\n"
+        self._ssl = _ssl
+
+        if self._ssl:
+            self._socket = ssl.wrap_socket(self._socket)
 
         if not lazy:
             self.connect()
@@ -271,8 +277,12 @@ class FrozenIdea(object):
                 self.on_select_timeout()
                 continue
 
-            # read 4096B from the server
-            msg_queue += self._socket.recv(4096)
+            try:
+                # read 4096B from the server
+                msg_queue += self._socket.recv(4096)
+            except ssl.SSLWantReadError:
+                select.select([self._socket], [], [], self.socket_timeout)
+                continue
 
             # whole message doesn't arrived yet
             if self._endl not in msg_queue:
