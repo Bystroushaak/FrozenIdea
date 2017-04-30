@@ -356,7 +356,7 @@ class FrozenIdea(object):
 
         # nickname already in use
         elif parsed.type.startswith("433"):
-            nickname = parsed.type.split(" ", 2)[1]
+            nickname = parsed.type.split()[-1]
             self.on_nickname_used(nickname)
 
         # nick list
