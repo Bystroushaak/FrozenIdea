@@ -1,36 +1,19 @@
-#! /usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-FrozenIdea event driven IRC bot class
-by  Bystroushaak (bystrousak@kitakitsune.org)
-and Thyrst (https://github.com/Thyrst)
-"""
-# Interpreter version: python 2.7
-#
-# TODO
-#   :irc.cyberyard.net 401 TODObot � :No such nick/channel
-#   ERROR :Closing Link: TODObot[31.31.73.113] (Excess Flood)
-#
-# Imports =====================================================================
+import ssl
 import time
 import socket
 import select
-import ssl
 from collections import namedtuple
 
 
-# Exceptions ==================================================================
 class QuitException(Exception):
     pass
 
 
-# Datastructures ==============================================================
 class ParsedMsg(namedtuple("ParsedMsg", "nick type text")):
     pass
 
 
-# Class definition ============================================================
-class FrozenIdea(object):
+class FrozenIdea:
     """
     FrozenIdea IRC bot template class.
 
