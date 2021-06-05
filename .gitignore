@@ -5,3 +5,5 @@ example/frozenidea2.py
 todo_data.json
 *.egg-info/*
 dist/*
+/.idea/
+/src/FrozenIdea.egg-info/
