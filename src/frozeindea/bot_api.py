@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
 import sys
 import time
 import argparse
@@ -13,10 +11,13 @@ logger = logging.getLogger("bot")
 
 
 def get_rotating_logger(fn="irc.log"):
-    formatter = logging.Formatter("%(asctime)s %(filename)s:%(lineno)d %(funcName)s() %(levelname)s:\n%(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s %(filename)s:%(lineno)d %(funcName)s() %(levelname)s:\n%(message)s"
+    )
 
-    file_logger = logging.handlers.TimedRotatingFileHandler(fn, when="midnight",
-                                                            backupCount=5)
+    file_logger = logging.handlers.TimedRotatingFileHandler(
+        fn, when="midnight", backupCount=5
+    )
     file_logger.setFormatter(formatter)
 
     stderr_logger = logging.StreamHandler(sys.stderr)
@@ -131,38 +132,28 @@ class BotAPI(FrozenIdea):
 
 def get_args_parser(description):
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument(
-        "-s",
-        '--server',
-        type=str,
-        help='Address of the IRC server.'
-    )
+    parser.add_argument("-s", "--server", type=str, help="Address of the IRC server.")
     parser.add_argument(
         "-p",
-        '--port',
+        "--port",
         type=int,
         default=6667,
-        help='Port of the IRC server. Default 6667.'
+        help="Port of the IRC server. Default 6667.",
     )
     parser.add_argument(
         "-n",
-        '--nick',
+        "--nick",
         type=str,
         default="KoronaBot",
-        help="Bot's nick. Default 'KoronaBot'."
+        help="Bot's nick. Default 'KoronaBot'.",
     )
+    parser.add_argument("-q", "--quiet", action="store_true", help="Be quiet.")
     parser.add_argument(
-        "-q",
-        "--quiet",
-        action="store_true",
-        help="Be quiet."
-    )
-    parser.add_argument(
-        'channels',
-        metavar='CHANNEL',
+        "channels",
+        metavar="CHANNEL",
         type=str,
-        nargs='+',
-        help='List of channels for bot to join. With or without #.'
+        nargs="+",
+        help="List of channels for bot to join. With or without #.",
     )
 
     return parser
