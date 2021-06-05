@@ -41,8 +41,8 @@ class FrozenIdea:
 
     Raise :class:`QuitException` if you wish to quit.
     """
-    def __init__(
-        self, nickname, server, port, join_list=None, lazy=False, _ssl=False):
+
+    def __init__(self, nickname, server, port, join_list=None, lazy=False, _ssl=False):
         """
         Constructor.
 
@@ -240,19 +240,14 @@ class FrozenIdea:
             self._socket_send_line("PASS " + self.password)
 
         # identify to server
-        self._socket_send_line(
-            "USER " + self.nickname + " 0 0 :" + self.real_name
-        )
+        self._socket_send_line("USER " + self.nickname + " 0 0 :" + self.real_name)
         self._socket_send_line("NICK " + self.nickname)
 
         msg_queue = ""
         while True:
             # select read doesn't consume that much resources from server
             ready_to_read, ready_to_write, in_error = select.select(
-                [self._socket],
-                [],
-                [],
-                self.socket_timeout
+                [self._socket], [], [], self.socket_timeout
             )
 
             # timeouted, call .on_select_timeout()
@@ -352,7 +347,10 @@ class FrozenIdea:
                 new_chan = False
 
             # get list of nicks, remove chan statuses (op/halfop/..)
-            msg = [nick if nick[0] not in "&@%+" else nick[1:] for nick in parsed.text.split()]
+            msg = [
+                nick if nick[0] not in "&@%+" else nick[1:]
+                for nick in parsed.text.split()
+            ]
 
             self.chans[chan_name] = msg
 
@@ -373,20 +371,10 @@ class FrozenIdea:
                 if parsed.text.startswith("\x01ACTION"):
                     msg = parsed.text.split("\x01ACTION", 1)[1]
                     msg = msg.strip().strip("\x01")
-                    self.on_channel_action_message(
-                        msg_type,
-                        nick,
-                        hostname,
-                        msg
-                    )
+                    self.on_channel_action_message(msg_type, nick, hostname, msg)
                     return
 
-                self.on_channel_message(
-                    msg_type,
-                    nick,
-                    hostname,
-                    parsed.text
-                )
+                self.on_channel_message(msg_type, nick, hostname, parsed.text)
                 return
 
             # pm msg
