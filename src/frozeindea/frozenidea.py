@@ -73,6 +73,7 @@ class FrozenIdea:
         self.server = server
         self.port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._endl = "\r\n"
         self._ssl = _ssl
 
@@ -96,13 +97,16 @@ class FrozenIdea:
         Args:
             line (str): Line which will be sent to socket.
         """
+        if self._socket.fileno() == -1:  # don't send to closed socket
+            return
+
         if not line.endswith(self._endl):
             line += self._endl
 
         # lot of fun with this shit -- if you want to enjoy some unicode
         # errors, try sending "��"
         try:
-            line = bytes(line.encode("utf-8"))
+            line = bytes(line, "utf-8")
         except UnicodeEncodeError:
             try:
                 line = bytes(line.decode("utf-8"))
@@ -163,13 +167,13 @@ class FrozenIdea:
                      message, `1` for action message or `2` for notice.
         """
         line = [
-            "PRIVMSG %s :%s" % (to, msg),
-            "PRIVMSG %s :\x01ACTION %s\x01" % (to, msg),
-            "NOTICE %s :%s" % (to, msg),
+            "PRIVMSG %s :%s",
+            "PRIVMSG %s :\x01ACTION %s\x01",
+            "NOTICE %s :%s",
         ]
 
         try:
-            line = line[int(msg_type)]
+            line = line[int(msg_type)] % (to, msg)
         except IndexError:
             line = "PRIVMSG " + to + " :" + msg
 
@@ -207,6 +211,9 @@ class FrozenIdea:
         Leave all channels and close connection. Show :attr:`self.quit_msg`
         if set.
         """
+        if self._socket.fileno() == -1:  # don't send to closed socket
+            return
+
         self._socket_send_line("QUIT :" + self.quit_msg)
         self._socket.close()
 
@@ -226,7 +233,6 @@ class FrozenIdea:
         finally:
             self.on_quit()
             self.quit()
-            raise
 
     def _really_run(self):
         """
@@ -245,6 +251,9 @@ class FrozenIdea:
 
         msg_queue = ""
         while True:
+            if self._socket.fileno() == -1:
+                return
+
             # select read doesn't consume that much resources from server
             ready_to_read, ready_to_write, in_error = select.select(
                 [self._socket], [], [], self.socket_timeout

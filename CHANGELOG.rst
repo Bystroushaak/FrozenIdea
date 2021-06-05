@@ -1,6 +1,10 @@
 Changelog
 =========
 
+3.1.2
+-----
+    - Fixed socket handling - don't send data to already closed socket.
+
 3.1.1
 -----
     - Fixed py3 conversion errors.
