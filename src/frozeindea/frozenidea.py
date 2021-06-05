@@ -417,7 +417,7 @@ class FrozenIdea:
             except IndexError:
                 chan_name = parsed.text
 
-            if nick != self.nickname:
+            if nick != self.nickname and chan_name in self.chans:
                 if nick not in self.chans[chan_name]:
                     self.chans[chan_name].append(nick)
                     self.on_somebody_joined_chan(chan_name, nick)

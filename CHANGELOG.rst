@@ -1,6 +1,10 @@
 Changelog
 =========
 
+3.1.3
+-----
+    - Fixed bug in channel join handling.
+
 3.1.2
 -----
     - Fixed socket handling - don't send data to already closed socket.
