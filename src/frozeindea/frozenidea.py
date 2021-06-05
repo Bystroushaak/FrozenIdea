@@ -99,10 +99,10 @@ class FrozenIdea:
         if not line.endswith(self._endl):
             line += self._endl
 
-        # lot of fun with this shit -- if you wan't to enjoy some unicode
+        # lot of fun with this shit -- if you want to enjoy some unicode
         # errors, try sending "��"
         try:
-            line = bytes(line)
+            line = bytes(line.encode("utf-8"))
         except UnicodeEncodeError:
             try:
                 line = bytes(line.decode("utf-8"))
@@ -257,7 +257,7 @@ class FrozenIdea:
 
             try:
                 # read 4096B from the server
-                msg_queue += self._socket.recv(4096)
+                msg_queue += self._socket.recv(4096).decode("utf-8", errors="ignore")
             except ssl.SSLWantReadError:
                 select.select([self._socket], [], [], self.socket_timeout)
                 continue
@@ -272,7 +272,6 @@ class FrozenIdea:
             msg_queue = splitted[-1]  # last one may not be whole
 
             for msg in msgs:
-                msg = bytes(msg)
                 if self.verbose:
                     print(msg.strip())
 
@@ -334,7 +333,7 @@ class FrozenIdea:
 
         # nickname already in use
         elif parsed.type.startswith("433"):
-            nickname = parsed.type.split()[-1]
+            nickname = parsed.type.split(" ", 2)[1]
             self.on_nickname_used(nickname)
 
         # nick list

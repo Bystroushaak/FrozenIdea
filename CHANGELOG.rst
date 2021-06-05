@@ -1,6 +1,10 @@
 Changelog
 =========
 
+3.1.1
+-----
+    - Fixed py3 conversion errors.
+
 3.1.0
 -----
     - Code ported to py3.
